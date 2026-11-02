@@ -13,13 +13,21 @@ out its own, which SeedVR2 has no flags for:
                               memory bug of PyTorch 2.9 and 2.10, which
                               calls cuDNN directly with tuning off
 
+A folder as the input also keeps the models loaded from file to file
+(--cache_dit, --cache_vae). With TOUCHUP_SERVE=1 it stays running and
+takes more jobs from standard input, with the models loaded once (see
+serve below).
+
     python seedvr2_launch.py src/inference_cli.py video.mp4 --batch_size 21 ...
 """
 
 import inspect
 import os
+import platform
 import runpy
+import shutil
 import sys
+import time
 
 
 def take(argv, flag, has_value=True):
@@ -97,12 +105,9 @@ def tune_cudnn():
     print("TouchUp: cuDNN tuning on", flush=True)
 
 
-def main():
-    argv = sys.argv[1:]
-    if not argv:
-        sys.exit(__doc__)
-    cli = os.path.abspath(argv.pop(0))
-
+def prepare(argv):
+    """Turns TouchUp's flags in argv into SeedVR2's, returning the patch
+    settings: (vae memory, tune, plain conv3d)."""
     chunk = take(argv, "--touchup-chunk-frames")
     vae_memory = take(argv, "--touchup-vae-memory")
     tune = take(argv, "--touchup-cudnn-tune", has_value=False)
@@ -115,6 +120,17 @@ def main():
         argv += ["--chunk_size", str(size)]
         print(f"TouchUp: {size} frames per chunk, in batches of {batch}", flush=True)
 
+    # A folder is processed file by file, and a server runs job after job;
+    # keep the models loaded in between instead of loading them again.
+    # (They wait in system memory, which takes a moment, not a reload.)
+    if SERVING or (argv and os.path.isdir(argv[0])):
+        for flag in ("--cache_dit", "--cache_vae"):
+            if flag not in argv:
+                argv.append(flag)
+    return vae_memory, tune, plain
+
+
+def setup(cli, argv, vae_memory, tune, plain):
     # SeedVR2 picks the GPU by setting CUDA_VISIBLE_DEVICES before torch
     # starts CUDA, and the patches below import modules that start it, so
     # it's set here first. SeedVR2 leaves a set one alone.
@@ -132,6 +148,108 @@ def main():
     if plain:
         plain_conv3d()
 
+
+# SERVING is set when TouchUp runs this as a server (TOUCHUP_SERVE=1):
+# after the job in the arguments it reads more from standard input, a
+# JSON array of arguments a line, and ends each with "TOUCHUP-SERVE-DONE
+# <exit code>". The models stay loaded from job to job.
+SERVING = os.environ.get("TOUCHUP_SERVE") == "1"
+
+
+def run_job(cli, argv, cache):
+    """Runs one job like SeedVR2's main(), but with models kept in cache
+    from one job to the next."""
+    sys.argv = [cli.__file__] + argv
+    args = cli.parse_arguments()
+    cli.debug.enabled = args.debug
+    args.cache_dit = args.cache_vae = True
+    if args.video_backend == "ffmpeg" and shutil.which("ffmpeg") is None:
+        raise RuntimeError("--video_backend ffmpeg requires ffmpeg in PATH")
+    if platform.system() == "Darwin" or not args.cuda_device:
+        devices = ["0"]
+    else:
+        devices = [d.strip() for d in str(args.cuda_device).split(",") if d.strip()]
+    if not cli.download_weight(dit_model=args.dit_model, vae_model=cli.DEFAULT_VAE, model_dir=args.model_dir, debug=cli.debug):
+        raise RuntimeError("the model files are missing")
+
+    started = time.time()
+    kind = cli.get_input_type(args.input)
+    if kind == "directory":
+        for path in cli.get_media_files(args.input):
+            file_kind = cli.get_input_type(path)
+            args.output_format = "mp4" if file_kind == "video" else "png"
+            out = cli.generate_output_path(path, args.output_format, args.output, input_type=file_kind, from_directory=True)
+            cli.process_single_file(path, args, devices, out, format_auto_detected=True, runner_cache=cache)
+    elif kind in ("video", "image"):
+        args.output_format = "mp4" if kind == "video" else "png"
+        cli.process_single_file(args.input, args, devices, args.output, format_auto_detected=True, runner_cache=cache)
+    else:
+        raise RuntimeError(f"Unsupported input type: {args.input}")
+    print(f"TouchUp: job done in {time.time() - started:.1f}s", flush=True)
+
+
+def serve(cli_path, argv):
+    """Runs the job in argv, then the ones TouchUp sends, with the models
+    loaded once."""
+    import importlib.util
+    import json
+    import traceback
+
+    # SeedVR2 reads --cuda_device when it's imported.
+    sys.argv = [cli_path] + argv
+    spec = importlib.util.spec_from_file_location("seedvr2_cli", cli_path)
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+
+    cache = {}
+    while True:
+        code = 0
+        try:
+            run_job(cli, argv, cache)
+        except SystemExit as e:
+            code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+        except Exception as e:
+            traceback.print_exc()
+            print(f"Error: {e}", flush=True)
+            code = 1
+        # Results of the last job wait for the next one in system memory,
+        # not on the GPU.
+        ctx = cache.get("ctx")
+        if ctx is not None:
+            for key in [k for k in ctx if k not in KEEP]:
+                del ctx[key]
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+        print(f"TOUCHUP-SERVE-DONE {code}", flush=True)
+        if code != 0:
+            return  # TouchUp starts a new server after a failure
+        line = sys.stdin.readline()
+        if not line:
+            return
+        # The command's arguments: this script, SeedVR2's, then the job.
+        argv = json.loads(line)[2:]
+        prepare(argv)  # the patches were set up by the first job
+
+
+# What SeedVR2 keeps of a generation's context between jobs.
+KEEP = {"dit_device", "vae_device", "dit_offload_device", "vae_offload_device", "tensor_offload_device", "compute_dtype"}
+
+
+def main():
+    argv = sys.argv[1:]
+    if not argv:
+        sys.exit(__doc__)
+    cli = os.path.abspath(argv.pop(0))
+    patches = prepare(argv)
+    setup(cli, argv, *patches)
+    if SERVING:
+        serve(cli, argv)
+        return
     sys.argv = [cli] + argv
     runpy.run_path(cli, run_name="__main__")
 

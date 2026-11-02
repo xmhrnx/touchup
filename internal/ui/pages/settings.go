@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mehran9675/giode"
+	"github.com/mehran9675/giode/components/dropdown"
 	"github.com/mehran9675/giode/components/input"
 	"github.com/mehran9675/giode/components/scroll"
 	"github.com/mehran9675/giode/components/segmented"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/mehran9675/touchup/internal/paths"
 	"github.com/mehran9675/touchup/internal/settings"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/components"
 	"github.com/mehran9675/touchup/internal/ui/store"
 	"github.com/mehran9675/touchup/internal/ui/theme"
@@ -38,6 +40,7 @@ type Settings struct {
 	mode, image, audio, codec, gpu *segmented.Control
 	quality                        *slider.Slider
 	keepWork, sysmem               *toggle.Switch
+	language                       *dropdown.Select
 	output                         *input.Input
 	tools                          map[string]*input.Input
 	showData                       *giode.ButtonElement
@@ -49,7 +52,7 @@ func NewSettings(s *store.Store) *Settings {
 	p := &Settings{s: s, tools: map[string]*input.Input{}}
 	update := s.UpdateSettings
 
-	p.mode = theme.Segmented("Dark", "Light").OnChange(func(i int) {
+	p.mode = theme.Segmented(tr.T("Dark"), tr.T("Light")).OnChange(func(i int) {
 		update(func(c *settings.Settings) { c.LightMode = i == 1 })
 	})
 	p.mode.SetSelected(boolIndex(st.LightMode))
@@ -65,10 +68,31 @@ func NewSettings(s *store.Store) *Settings {
 		update(func(c *settings.Settings) { c.VideoCodec = videoCodecs[i] })
 	})
 	p.codec.SetSelected(max(0, slices.Index(videoCodecs, st.VideoCodec)))
-	p.gpu = theme.Segmented("Auto", "GPU 0", "GPU 1", "GPU 2").OnChange(func(i int) {
+	p.gpu = theme.Segmented(tr.T("Auto"), "GPU 0", "GPU 1", "GPU 2").OnChange(func(i int) {
 		update(func(c *settings.Settings) { c.GPU = gpus[i] })
 	})
 	p.gpu.SetSelected(max(0, slices.Index(gpus, st.GPU)))
+
+	// The system's language first, then each in its own name.
+	languages := []string{tr.T("Same as the system")}
+	selected := 0
+	for i, l := range tr.Languages {
+		languages = append(languages, l.Name)
+		if l.Code == st.Language {
+			selected = i + 1
+		}
+	}
+	p.language = giode.Input.Select(giode.Styles{
+		Width: 260, Background: theme.Raised(), Color: theme.Text, BorderColor: theme.Border, BorderRadius: 10, FontSize: 13,
+	}, languages...).OnChange(func(i int) {
+		code := ""
+		if i > 0 {
+			code = tr.Languages[i-1].Code
+		}
+		update(func(c *settings.Settings) { c.Language = code })
+		tr.Use(code)
+	})
+	p.language.SetSelected(selected)
 
 	p.quality = giode.Input.Slider(giode.Styles{Color: theme.Primary, Background: theme.Raised(), BorderColor: "#FFFFFF"}).
 		OnChange(func(v float32) {
@@ -86,7 +110,7 @@ func NewSettings(s *store.Store) *Settings {
 	})
 	p.sysmem.SetChecked(st.AllowSystemMemory)
 
-	p.output = pathField("Next to the original file", st.OutputDir, func(v string) {
+	p.output = pathField(tr.T("Next to the original file"), st.OutputDir, func(v string) {
 		update(func(c *settings.Settings) { c.OutputDir = v })
 	})
 	toolFields := map[string]func(*settings.Settings) *string{
@@ -96,11 +120,11 @@ func NewSettings(s *store.Store) *Settings {
 		"python":  func(c *settings.Settings) *string { return &c.Python },
 	}
 	for name, field := range toolFields {
-		p.tools[name] = pathField("Found automatically", *field(&s.Settings), func(v string) {
+		p.tools[name] = pathField(tr.T("Found automatically"), *field(&s.Settings), func(v string) {
 			update(func(c *settings.Settings) { *field(c) = v })
 		})
 	}
-	p.showData = theme.SecondaryButton("Show folder", "folder-open").OnClick(func() { s.Reveal(paths.Engines()) })
+	p.showData = theme.SecondaryButton(tr.T("Show folder"), "folder-open").OnClick(func() { s.Reveal(paths.Engines()) })
 	p.scroll = giode.Scroll(p.content, giode.Styles{ScrollBar: giode.ScrollBar{Width: 4, ThumbColor: theme.Border}})
 	return p
 }
@@ -123,7 +147,7 @@ func pathField(placeholder, value string, save func(string)) *input.Input {
 func (p *Settings) View() giode.Element {
 	return giode.Stack(giode.Styles{Width: -1, Height: -1},
 		giode.Box(giode.Styles{Width: -1, Padding: giode.Inset{Top: 28, Right: 32, Bottom: 16, Left: 32}},
-			components.PageHeader("Settings", "Where results go, how they're encoded, and the tools TouchUp drives.")),
+			components.PageHeader(tr.T("Settings"), tr.T("Where results go, how they're encoded, and the tools TouchUp drives."))),
 		giode.Box(giode.Styles{Width: -1, FlexGrow: 1}, p.scroll),
 	)
 }
@@ -149,11 +173,11 @@ func (p *Settings) content() giode.Element {
 		var badge giode.Element
 		switch {
 		case found != "":
-			badge = components.StatusBadge("Found", theme.Success)
+			badge = components.StatusBadge(tr.T("Found"), theme.Success)
 		case name == "python":
-			badge = components.StatusBadge("Automatic", theme.Info)
+			badge = components.StatusBadge(tr.T("Automatic"), theme.Info)
 		default:
-			badge = components.StatusBadge("Missing", theme.Warning)
+			badge = components.StatusBadge(tr.T("Missing"), theme.Warning)
 		}
 		desc := missing
 		if found != "" {
@@ -169,33 +193,33 @@ func (p *Settings) content() giode.Element {
 	}
 
 	return giode.Stack(giode.Styles{Width: -1, MaxWidth: 920, Gap: 18, Padding: giode.Inset{Right: 32, Bottom: 32, Left: 32}},
-		section("Appearance",
-			components.SettingRow("Theme", "TouchUp is designed dark-first; light suits bright rooms.", seg(p.mode, 220)),
+		section(tr.T("Appearance"),
+			components.SettingRow(tr.T("Language"), tr.T("The language of TouchUp's text. Engines' own messages stay in English."), p.language),
+			components.SettingRow(tr.T("Theme"), tr.T("TouchUp is designed dark-first; light suits bright rooms."), seg(p.mode, 220)),
 		),
-		section("Output",
-			components.SettingRow("Save results to", "Leave empty to save next to each original.", p.output),
-			components.SettingRow("Image format", "PNG keeps every detail; WebP and JPEG are smaller.", seg(p.image, 260)),
-			components.SettingRow("Video codec", "H.265 is smaller; ProRes is for editing.", seg(p.codec, 260)),
-			components.SettingRow("Video quality", fmt.Sprintf("CRF %d · %s", st.VideoQuality, qualityWord(st.VideoQuality)),
+		section(tr.T("Output"),
+			components.SettingRow(tr.T("Save results to"), tr.T("Leave empty to save next to each original."), p.output),
+			components.SettingRow(tr.T("Image format"), tr.T("PNG keeps every detail; WebP and JPEG are smaller."), seg(p.image, 260)),
+			components.SettingRow(tr.T("Video codec"), tr.T("H.265 is smaller; ProRes is for editing."), seg(p.codec, 260)),
+			components.SettingRow(tr.T("Video quality"), fmt.Sprintf("CRF %d · %s", st.VideoQuality, qualityWord(st.VideoQuality)),
 				giode.Box(giode.Styles{Width: 260}, p.quality)),
-			components.SettingRow("Audio format", "WAV and FLAC are lossless; MP3 is encoded at 320 kbps.", seg(p.audio, 260)),
+			components.SettingRow(tr.T("Audio format"), tr.T("WAV and FLAC are lossless; MP3 is encoded at 320 kbps."), seg(p.audio, 260)),
 		),
-		section("Hardware",
-			components.SettingRow("GPU", "Which graphics card engines use, when there's more than one.", seg(p.gpu, 340)),
-			components.SettingRow("Use system memory when the GPU is full",
-				"On, a job that doesn't fit in GPU memory carries on in system memory, often ten times slower or worse. "+
-					"Off, it stops with \"out of memory\" so you can pick smaller tiles or batches. Applies to Python engines.",
+		section(tr.T("Hardware"),
+			components.SettingRow(tr.T("GPU"), tr.T("Which graphics card engines use, when there's more than one."), seg(p.gpu, 340)),
+			components.SettingRow(tr.T("Use system memory when the GPU is full"),
+				tr.T("On, a job that doesn't fit in GPU memory carries on in system memory, often ten times slower or worse. Off, it stops with \"out of memory\" so you can pick smaller tiles or batches. Applies to Python engines."),
 				p.sysmem),
 		),
-		section("Tools",
-			tool("ffmpeg", "FFmpeg", s.Tools.FFmpeg, "Needed to read and write video and audio. Install it from ffmpeg.org."),
-			tool("ffprobe", "FFprobe", s.Tools.FFprobe, "Comes with FFmpeg; reads file details."),
-			tool("ffplay", "FFplay", s.Tools.FFplay, "Comes with most FFmpeg builds; plays audio previews."),
+		section(tr.T("Tools"),
+			tool("ffmpeg", "FFmpeg", s.Tools.FFmpeg, tr.T("Needed to read and write video and audio. Install it from ffmpeg.org.")),
+			tool("ffprobe", "FFprobe", s.Tools.FFprobe, tr.T("Comes with FFmpeg; reads file details.")),
+			tool("ffplay", "FFplay", s.Tools.FFplay, tr.T("Comes with most FFmpeg builds; plays audio previews.")),
 			tool("python", "Python", s.Python, s.PythonNote),
 		),
-		section("Storage",
-			components.SettingRow("Engines folder", paths.Engines(), p.showData),
-			components.SettingRow("Keep work files", "Keep extracted frames and clips after each job, for debugging.", p.keepWork),
+		section(tr.T("Storage"),
+			components.SettingRow(tr.T("Engines folder"), paths.Engines(), p.showData),
+			components.SettingRow(tr.T("Keep work files"), tr.T("Keep extracted frames and clips after each job, for debugging."), p.keepWork),
 		),
 	)
 }
@@ -203,13 +227,13 @@ func (p *Settings) content() giode.Element {
 func qualityWord(crf int) string {
 	switch {
 	case crf <= 14:
-		return "near lossless, large files"
+		return tr.T("near lossless, large files")
 	case crf <= 18:
-		return "visually lossless"
+		return tr.T("visually lossless")
 	case crf <= 23:
-		return "balanced"
+		return tr.T("balanced")
 	}
-	return "small files"
+	return tr.T("small files")
 }
 
 func boolIndex(b bool) int {

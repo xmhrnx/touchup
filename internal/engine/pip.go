@@ -3,14 +3,15 @@ package engine
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/mehran9675/touchup/internal/proc"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 func installPip(ctx context.Context, m *Manifest, python string, report Report) error {
@@ -27,25 +28,28 @@ func installPip(ctx context.Context, m *Manifest, python string, report Report) 
 		return err
 	}
 	venv := filepath.Join(m.Dir(), "venv")
-	report(Status{Stage: "Creating Python environment", Frac: -1})
-	if err := runLogged(ctx, report, "Creating Python environment", python, "-m", "venv", venv); err != nil {
+	report(Status{Stage: tr.T("Creating Python environment"), Frac: -1})
+	if err := runLogged(ctx, report, tr.T("Creating Python environment"), python, "-m", "venv", venv); err != nil {
 		return err
 	}
 	vpy := filepath.Join(m.venvBin(), "python")
 	if runtime.GOOS == "windows" {
 		vpy += ".exe"
 	}
-	if err := runLogged(ctx, report, "Updating pip", vpy, "-m", "pip", "install", "--upgrade", "pip"); err != nil {
+	if err := runLogged(ctx, report, tr.T("Updating pip"), vpy, "-m", "pip", "install", "--upgrade", "pip"); err != nil {
 		return err
 	}
 	steps := m.Install.Pip
 	if len(m.Install.Packages) > 0 {
 		steps = append([]PipStep{{Args: m.Install.Packages}}, steps...)
 	}
+	steps = slices.DeleteFunc(slices.Clone(steps), func(st PipStep) bool {
+		return len(st.OS) > 0 && !slices.Contains(st.OS, runtime.GOOS)
+	})
 	for i, step := range steps {
-		stage := "Installing packages"
+		stage := tr.T("Installing packages")
 		if len(steps) > 1 {
-			stage = fmt.Sprintf("Installing packages (%d of %d)", i+1, len(steps))
+			stage = tr.T("Installing packages ({n} of {total})", "n", i+1, "total", len(steps))
 		}
 		args := []string{"-m", "pip", "install", "--progress-bar", "off"}
 		if index := pick(step.IndexURL); index != "" {
@@ -55,6 +59,10 @@ func installPip(ctx context.Context, m *Manifest, python string, report Report) 
 			args = append(args, strings.ReplaceAll(a, "{engineDir}", m.Dir()))
 		}
 		if err := runLogged(ctx, report, stage, vpy, args...); err != nil {
+			if step.Optional && ctx.Err() == nil {
+				report(Status{Stage: stage, Frac: -1, Line: tr.T("Skipped an optional package that didn't install: {reason}", "reason", err.Error())})
+				continue
+			}
 			return err
 		}
 	}
@@ -70,11 +78,11 @@ func installSource(ctx context.Context, m *Manifest, src *Source, report Report)
 	tmp.Close()
 	defer os.Remove(tmp.Name())
 	if err := download(ctx, src.URL, tmp.Name(), func(frac float64) {
-		report(Status{Stage: "Downloading the code", Frac: frac})
+		report(Status{Stage: tr.T("Downloading the code"), Frac: frac})
 	}); err != nil {
 		return err
 	}
-	report(Status{Stage: "Unpacking", Frac: -1})
+	report(Status{Stage: tr.T("Unpacking"), Frac: -1})
 	return extract(tmp.Name(), filepath.Join(m.Dir(), filepath.FromSlash(src.Dir)))
 }
 

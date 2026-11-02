@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // installedMarker is written into an engine's folder once its install
@@ -27,11 +29,11 @@ type Report func(Status)
 // Python environments; empty finds python3 or python on PATH.
 func Install(ctx context.Context, m *Manifest, python string, report Report) error {
 	if !m.Supported() {
-		return errors.New("this engine has no build for your system")
+		return errors.New(tr.T("this engine has no build for your system"))
 	}
 	if m.Install.Type == "none" {
 		if m.ExecutablePath() == "" {
-			return fmt.Errorf("%s was not found; check the executable path", pick(m.Executable))
+			return errors.New(tr.T("{program} was not found; check the executable path", "program", pick(m.Executable)))
 		}
 		return nil
 	}
@@ -60,7 +62,7 @@ func Install(ctx context.Context, m *Manifest, python string, report Report) err
 	}
 	if m.ExecutablePath() == "" {
 		os.RemoveAll(dir)
-		return fmt.Errorf("installed, but %s wasn't found in it", pick(m.Executable))
+		return errors.New(tr.T("installed, but {program} wasn't found in it", "program", pick(m.Executable)))
 	}
 	return os.WriteFile(filepath.Join(dir, installedMarker), []byte(time.Now().Format(time.RFC3339)), 0o644)
 }
@@ -82,11 +84,11 @@ func installArchive(ctx context.Context, m *Manifest, report Report) error {
 	tmp.Close()
 	defer os.Remove(tmp.Name())
 	if err := download(ctx, url, tmp.Name(), func(frac float64) {
-		report(Status{Stage: "Downloading", Frac: frac})
+		report(Status{Stage: tr.T("Downloading"), Frac: frac})
 	}); err != nil {
 		return err
 	}
-	report(Status{Stage: "Unpacking", Frac: -1})
+	report(Status{Stage: tr.T("Unpacking"), Frac: -1})
 	if err := extract(tmp.Name(), m.Dir()); err != nil {
 		return err
 	}

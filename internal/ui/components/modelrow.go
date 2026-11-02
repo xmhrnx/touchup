@@ -3,6 +3,7 @@ package components
 import (
 	"github.com/mehran9675/giode"
 
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
 
@@ -32,13 +33,13 @@ func ModelRow(p ModelRowProps) giode.Element {
 		giode.Text(p.Name, theme.Label().With(giode.Styles{FontSize: 12.5, TextOverflow: giode.TextOverflowEllipsis})),
 	}
 	if p.Recommended {
-		title = append(title, Tag("Recommended", theme.Primary))
+		title = append(title, Tag(tr.T("Recommended"), theme.Primary))
 	}
 	var status giode.Element = giode.Text(p.Detail, theme.Caption())
 	if p.Installed {
 		status = giode.Row(giode.Styles{Gap: 5, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap},
 			theme.Icon("circle-check", 12, theme.Success),
-			giode.Text("Installed · "+p.Detail, theme.Caption().With(giode.Styles{Color: theme.Success})),
+			giode.Text(tr.T("Installed · {detail}", "detail", p.Detail), theme.Caption().With(giode.Styles{Color: theme.Success})),
 		)
 	}
 	info := []giode.Element{

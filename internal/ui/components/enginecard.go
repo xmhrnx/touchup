@@ -9,6 +9,8 @@ import (
 
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/media"
+	"github.com/mehran9675/touchup/internal/tr"
+	"github.com/mehran9675/touchup/internal/ui/format"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
 
@@ -44,26 +46,26 @@ func EngineCard(p EngineCardProps) giode.Element {
 	var badge giode.Element = giode.Box(giode.Styles{})
 	switch {
 	case p.Installed:
-		badge = StatusBadge("Installed", theme.Success)
+		badge = StatusBadge(tr.T("Installed"), theme.Success)
 	case m.Custom:
-		badge = StatusBadge("Custom", theme.Info)
+		badge = StatusBadge(tr.T("Custom"), theme.Info)
 	}
 
 	tags := []giode.Element{}
 	for _, k := range m.Media {
-		tags = append(tags, Tag(strings.ToUpper(k[:1])+k[1:], color))
+		tags = append(tags, Tag(MediaName(k), color))
 	}
 	for _, t := range m.Tags {
-		tags = append(tags, Tag(t, theme.Muted))
+		tags = append(tags, Tag(tr.T(t), theme.Muted))
 	}
 
 	facts := []giode.Element{}
 	if m.Requirements != "" {
-		facts = append(facts, fact("cpu", m.Requirements))
+		facts = append(facts, fact("cpu", tr.T(m.Requirements)))
 	}
 	detail := []string{}
 	if m.Install.Size != "" {
-		detail = append(detail, m.Install.Size)
+		detail = append(detail, tr.T(m.Install.Size))
 	}
 	if len(m.Scales) > 0 {
 		s := make([]string, len(m.Scales))
@@ -89,7 +91,7 @@ func EngineCard(p EngineCardProps) giode.Element {
 			badge,
 		),
 		giode.Box(giode.Styles{MinHeight: 57},
-			giode.Text(m.Description, theme.Secondary().With(giode.Styles{MaxLines: 3, TextOverflow: giode.TextOverflowEllipsis}))),
+			giode.Text(tr.T(m.Description), theme.Secondary().With(giode.Styles{MaxLines: 3, TextOverflow: giode.TextOverflowEllipsis}))),
 		giode.Row(giode.Styles{Gap: 6}, tags...),
 		giode.Stack(giode.Styles{Gap: 6}, facts...),
 	}
@@ -136,20 +138,13 @@ func fact(icon, text string) giode.Element {
 	)
 }
 
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
-}
-
 func percent(f float64) string {
 	if f < 0 {
 		return ""
 	}
 	if f < 0.1 {
 		// Long runs creep: 2.4% shows it moving where 2% wouldn't.
-		return fmt.Sprintf("%.1f%%", f*100)
+		return format.Percent(f, 1)
 	}
-	return fmt.Sprintf("%d%%", int(f*100))
+	return format.Percent(f, 0)
 }

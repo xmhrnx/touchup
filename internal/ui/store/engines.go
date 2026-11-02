@@ -8,6 +8,7 @@ import (
 	"github.com/mehran9675/giode"
 
 	"github.com/mehran9675/touchup/internal/engine"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // Install is an engine install in progress or failed.
@@ -27,7 +28,7 @@ func (s *Store) InstallEngine(m *engine.Manifest) {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	in := &Install{cancel: cancel, Status: engine.Status{Stage: "Starting", Frac: -1}}
+	in := &Install{cancel: cancel, Status: engine.Status{Stage: tr.T("Starting"), Frac: -1}}
 	s.Installs[m.ID] = in
 	python := s.Settings.Python
 	go func() {
@@ -41,10 +42,10 @@ func (s *Store) InstallEngine(m *engine.Manifest) {
 				delete(s.Installs, m.ID)
 			case err != nil:
 				in.Err, in.Log = err.Error(), engine.LogOf(err)
-				s.Toasts.Show(giode.ToastError, "Couldn't install "+m.Name)
+				s.Toasts.Show(giode.ToastError, tr.T("Couldn't install {engine}", "engine", m.Name))
 			default:
 				delete(s.Installs, m.ID)
-				s.Toasts.Show(giode.ToastSuccess, m.Name+" is installed")
+				s.Toasts.Show(giode.ToastSuccess, tr.T("{engine} is installed", "engine", m.Name))
 			}
 			s.locateTools() // Python may have been downloaded
 			s.refreshInstalled()
@@ -68,7 +69,7 @@ func (s *Store) UninstallEngine(m *engine.Manifest) {
 		s.fail(err)
 	}
 	s.refreshInstalled()
-	s.Toasts.Show(giode.ToastInfo, m.Name+" was removed")
+	s.Toasts.Show(giode.ToastInfo, tr.T("{engine} was removed", "engine", m.Name))
 }
 
 // AddCustomEngine saves a user's engine.
@@ -77,7 +78,7 @@ func (s *Store) AddCustomEngine(m *engine.Manifest) error {
 		return err
 	}
 	s.refreshInstalled()
-	s.Toasts.Show(giode.ToastSuccess, m.Name+" was added")
+	s.Toasts.Show(giode.ToastSuccess, tr.T("{engine} was added", "engine", m.Name))
 	return nil
 }
 
@@ -89,7 +90,7 @@ func (s *Store) RemoveCustomEngine(m *engine.Manifest) {
 		return
 	}
 	s.refreshInstalled()
-	s.Toasts.Show(giode.ToastInfo, m.Name+" was removed")
+	s.Toasts.Show(giode.ToastInfo, tr.T("{engine} was removed", "engine", m.Name))
 }
 
 // ImportManifest asks for a manifest file and adds its engine.
@@ -125,7 +126,7 @@ func (s *Store) InstallModel(m *engine.Manifest, mdl *engine.Model) {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	in := &Install{cancel: cancel, Status: engine.Status{Stage: "Starting", Frac: -1}}
+	in := &Install{cancel: cancel, Status: engine.Status{Stage: tr.T("Starting"), Frac: -1}}
 	s.ModelInstalls[key] = in
 	go func() {
 		err := engine.InstallModel(ctx, m, mdl, func(st engine.Status) {
@@ -138,10 +139,10 @@ func (s *Store) InstallModel(m *engine.Manifest, mdl *engine.Model) {
 				delete(s.ModelInstalls, key)
 			case err != nil:
 				in.Err, in.Log = err.Error(), engine.LogOf(err)
-				s.Toasts.Show(giode.ToastError, "Couldn't download "+mdl.Name)
+				s.Toasts.Show(giode.ToastError, tr.T("Couldn't download {model}", "model", tr.T(mdl.Name)))
 			default:
 				delete(s.ModelInstalls, key)
-				s.Toasts.Show(giode.ToastSuccess, mdl.Name+" is ready to use")
+				s.Toasts.Show(giode.ToastSuccess, tr.T("{model} is ready to use", "model", tr.T(mdl.Name)))
 			}
 			s.refreshInstalled()
 		})
@@ -166,7 +167,7 @@ func (s *Store) UninstallModel(m *engine.Manifest, mdl *engine.Model) {
 		s.fail(err)
 	}
 	s.refreshInstalled()
-	s.Toasts.Show(giode.ToastInfo, mdl.Name+" was removed")
+	s.Toasts.Show(giode.ToastInfo, tr.T("{model} was removed", "model", tr.T(mdl.Name)))
 }
 
 // CheckGPU runs an engine's GPU check in the background and calls done

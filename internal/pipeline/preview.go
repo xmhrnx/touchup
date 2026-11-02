@@ -6,6 +6,8 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // FramePreview is a single video frame before and after upscaling.
@@ -35,7 +37,7 @@ func PreviewFrame(ctx context.Context, o Options, path string, at float64, repor
 	if o.Engine.Input == "video" && !o.Engine.Handles("image") {
 		start := max(0, at-clipLength/2)
 		clip := filepath.Join(ws.in, "clip.mp4")
-		report(Update{Stage: "Cutting a clip", Frac: 0.05})
+		report(Update{Stage: tr.T("Cutting a clip"), Frac: 0.05})
 		if err := o.Tools.VideoClip(ctx, path, start, clipLength, clip); err != nil {
 			return FramePreview{}, err
 		}
@@ -43,9 +45,9 @@ func PreviewFrame(ctx context.Context, o Options, path string, at float64, repor
 		if err != nil {
 			return FramePreview{}, err
 		}
-		report(Update{Stage: "Upscaling", Frac: 0.1})
+		report(Update{Stage: tr.T("Upscaling"), Frac: 0.1})
 		result, err := o.Engine.Run(ctx, o.sized(o.job(clip, filepath.Join(ws.out, "clip"+o.Engine.OutputExt),
-			ws.in, ws.out, report, "Upscaling", 0.1, 0.95), info.Width, info.Height))
+			ws.in, ws.out, report, tr.T("Upscaling"), 0.1, 0.95), info.Width, info.Height))
 		if err != nil {
 			return FramePreview{}, err
 		}
@@ -58,7 +60,7 @@ func PreviewFrame(ctx context.Context, o Options, path string, at float64, repor
 	}
 
 	frame := filepath.Join(ws.in, "frame.png")
-	report(Update{Stage: "Grabbing the frame", Frac: 0.05})
+	report(Update{Stage: tr.T("Grabbing the frame"), Frac: 0.05})
 	if err := o.Tools.SaveFrameAt(ctx, path, at, frame); err != nil {
 		return FramePreview{}, err
 	}
@@ -68,7 +70,7 @@ func PreviewFrame(ctx context.Context, o Options, path string, at float64, repor
 	}
 	b := before.Bounds()
 	sz := o.size(b.Dx(), b.Dy())
-	stage := fmt.Sprintf("Upscaling to %d × %d", sz.Width, sz.Height)
+	stage := tr.T("Upscaling to {size}", "size", fmt.Sprintf("%d × %d", sz.Width, sz.Height))
 	report(Update{Stage: stage, Frac: 0.1})
 	result, err := o.picture(ctx, ws, frame, b.Dx(), b.Dy(), report, stage, 0.1, 0.95)
 	if err != nil {
@@ -111,17 +113,17 @@ func PreviewAudio(ctx context.Context, o Options, path string, start, length flo
 	}()
 
 	clip := filepath.Join(ws.in, "section.wav")
-	report(Update{Stage: "Cutting the section", Frac: 0.03})
+	report(Update{Stage: tr.T("Cutting the section"), Frac: 0.03})
 	if err := o.Tools.AudioClip(ctx, path, start, length, o.Engine.InputRate, clip, nil); err != nil {
 		return nil, err
 	}
-	report(Update{Stage: "Enhancing", Frac: 0.06})
+	report(Update{Stage: tr.T("Enhancing"), Frac: 0.06})
 	result, err := o.Engine.Run(ctx, o.job(clip, filepath.Join(ws.out, "section"+o.Engine.OutputExt),
-		ws.in, ws.out, report, "Enhancing", 0.06, 0.9))
+		ws.in, ws.out, report, tr.T("Enhancing"), 0.06, 0.9))
 	if err != nil {
 		return nil, err
 	}
-	report(Update{Stage: "Drawing spectrograms", Frac: 0.92})
+	report(Update{Stage: tr.T("Drawing spectrograms"), Frac: 0.92})
 	before, _ := o.Tools.Probe(ctx, clip)
 	after, _ := o.Tools.Probe(ctx, result)
 	rate := max(before.SampleRate, after.SampleRate, 8000)

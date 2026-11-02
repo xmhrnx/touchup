@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mehran9675/touchup/internal/proc"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // Job is one run of an engine.
@@ -63,58 +64,52 @@ var defaultProgress = regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%`)
 func (m *Manifest) Run(ctx context.Context, j Job) (string, error) {
 	exe := m.ExecutablePath()
 	if exe == "" {
-		return "", fmt.Errorf("%s is not installed", m.Name)
+		return "", errors.New(tr.T("{engine} is not installed", "engine", m.Name))
 	}
 	if j.Model != nil && !m.ModelInstalled(j.Model) {
-		return "", fmt.Errorf("the %s model of %s is not installed", j.Model.Name, m.Name)
+		return "", errors.New(tr.T("the {model} model of {engine} is not installed", "model", tr.T(j.Model.Name), "engine", m.Name))
 	}
 	if err := installScripts(m); err != nil {
 		return "", fmt.Errorf("updating %s's scripts: %w", m.Name, err)
 	}
 	args := m.Command(j)
-	cmd := proc.Command(ctx, exe, args...)
-	cmd.Dir = m.workingDir(exe)
-	cmd.Env = append(os.Environ(), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8")
+	env := append(os.Environ(), "PYTHONUNBUFFERED=1", "PYTHONIOENCODING=utf-8")
 	if len(j.PathDirs) > 0 {
 		dirs := append(slices.Clone(j.PathDirs), os.Getenv("PATH"))
-		cmd.Env = append(cmd.Env, "PATH="+strings.Join(dirs, string(os.PathListSeparator)))
+		env = append(env, "PATH="+strings.Join(dirs, string(os.PathListSeparator)))
 	}
 	if m.Install.Type == "pip" {
-		env, err := pythonHooks(j.StrictGPUMemory)
+		hooks, err := pythonHooks(j.StrictGPUMemory)
 		if err != nil {
 			return "", fmt.Errorf("preparing %s: %w", m.Name, err)
 		}
-		cmd.Env = append(cmd.Env, env...)
+		env = append(env, hooks...)
 	}
-	pr, pw := io.Pipe()
-	cmd.Stdout, cmd.Stderr = pw, pw
+	// Another engine's server would hold on to GPU memory this one needs.
+	stopServers(m.ID)
 
-	prog := newProgress(m)
 	tail := &tailBuffer{max: 400}
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		proc.Lines(pr, func(raw string) {
-			line := strings.TrimSpace(raw)
-			if line == "" {
-				return
-			}
-			tail.add(raw)
-			if j.Log != nil {
-				j.Log(line)
-			}
-			if j.Progress == nil {
-				return
-			}
-			if f, ok := prog.line(line); ok {
-				j.Progress(f)
-			}
-		})
-	}()
+	handle := lineHandler(m, j, tail)
 	started := time.Now()
-	err := cmd.Run()
-	pw.Close()
-	<-done
+	served := false
+	var err error
+	if m.Serve {
+		served, err = m.runServed(ctx, j, exe, args, env, m.workingDir(exe), handle)
+	}
+	if !served {
+		cmd := proc.Command(ctx, exe, args...)
+		cmd.Dir, cmd.Env = m.workingDir(exe), env
+		pr, pw := io.Pipe()
+		cmd.Stdout, cmd.Stderr = pw, pw
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			proc.Lines(pr, handle)
+		}()
+		err = cmd.Run()
+		pw.Close()
+		<-done
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return "", ctx.Err()
@@ -131,7 +126,29 @@ func (m *Manifest) Run(ctx context.Context, j Job) (string, error) {
 	if found := newestOutput(j.OutputDir, ext, started); found != "" {
 		return found, nil
 	}
-	return "", &RunError{Engine: m.Name, Summary: "finished without writing a " + ext + " file", Log: tail.String()}
+	return "", &RunError{Engine: m.Name, Summary: tr.T("finished without writing a {ext} file", "ext", ext), Log: tail.String()}
+}
+
+// lineHandler returns what's done with each line an engine prints: it's
+// kept for error reports, logged, and read for progress.
+func lineHandler(m *Manifest, j Job, tail *tailBuffer) func(string) {
+	prog := newProgress(m)
+	return func(raw string) {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			return
+		}
+		tail.add(raw)
+		if j.Log != nil {
+			j.Log(line)
+		}
+		if j.Progress == nil {
+			return
+		}
+		if f, ok := prog.line(line); ok {
+			j.Progress(f)
+		}
+	}
 }
 
 // Command returns the engine's arguments with the placeholders filled in.
@@ -224,7 +241,9 @@ type RunError struct {
 	Log     string
 }
 
-func (e *RunError) Error() string { return e.Engine + " failed: " + e.Summary }
+func (e *RunError) Error() string {
+	return tr.T("{engine} failed: {reason}", "engine", e.Engine, "reason", e.Summary)
+}
 
 // exceptionLine matches the last line of a Python traceback, such as
 // "torch.OutOfMemoryError: Allocation on device 0 ...", capturing it
@@ -259,7 +278,7 @@ func summarize(lines []string) string {
 		}
 		return l
 	}
-	return "it exited without saying why"
+	return tr.T("it exited without saying why")
 }
 
 // LogOf returns the engine output behind err, if it's a RunError.

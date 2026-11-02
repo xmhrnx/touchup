@@ -4,6 +4,8 @@ import (
 	"github.com/mehran9675/giode"
 	"github.com/mehran9675/giode/components/iconbutton"
 	"github.com/mehran9675/giode/styles/properties"
+
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // PrimaryButton is a filled call to action in the brand gradient.
@@ -106,7 +108,7 @@ func CopyButton(label string, text func() string) giode.Element {
 	if label == "" {
 		b.Labels("", "")
 	} else {
-		b.Labels(label, "Copied")
+		b.Labels(label, tr.T("Copied"))
 	}
 	return b
 }

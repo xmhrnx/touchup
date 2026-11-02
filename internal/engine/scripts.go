@@ -3,16 +3,18 @@ package engine
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"runtime"
 	"slices"
 	"strings"
 	"time"
 
 	"embed"
-	"github.com/mehran9675/touchup/internal/proc"
 	"os"
 	"path/filepath"
+
+	"github.com/mehran9675/touchup/internal/proc"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // Runner scripts that let TouchUp drive Python libraries that come
@@ -62,7 +64,7 @@ func CheckGPU(ctx context.Context, m *Manifest) (string, error) {
 		py += ".exe"
 	}
 	if !exists(py) {
-		return "", fmt.Errorf("%s is not installed", m.Name)
+		return "", errors.New(tr.T("{engine} is not installed", "engine", m.Name))
 	}
 	data, err := scriptsFS.ReadFile("scripts/gpu_check.py")
 	if err != nil {

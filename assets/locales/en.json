@@ -1,0 +1,7 @@
+{
+  "{count} engines installed": {"one": "{count} engine installed", "other": "{count} engines installed"},
+  "about {count} hours": {"one": "about {count} hour", "other": "about {count} hours"},
+  "{count} included": {"one": "{count} included", "other": "{count} included"},
+  "{installed} of {count} installed": {"one": "{installed} of {count} installed", "other": "{installed} of {count} installed"},
+  "{count} to choose from": {"one": "{count} to choose from", "other": "{count} to choose from"}
+}

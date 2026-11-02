@@ -33,6 +33,8 @@ type Settings struct {
 	VideoQuality int    `json:"videoQuality"` // CRF, lower is better
 	KeepWork     bool   `json:"keepWork"`     // keep frames and clips after a job
 	LightMode    bool   `json:"lightMode"`
+	// Language is the UI's language ("de"), or empty for the system's.
+	Language string `json:"language,omitempty"`
 
 	// Choices remembers the engine, model and scale last used for each
 	// kind of media.

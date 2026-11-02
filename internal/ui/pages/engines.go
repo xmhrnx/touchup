@@ -2,7 +2,6 @@ package pages
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/mehran9675/giode"
 	"github.com/mehran9675/giode/components/dialog"
@@ -10,6 +9,7 @@ import (
 	"github.com/mehran9675/giode/components/segmented"
 
 	"github.com/mehran9675/touchup/internal/engine"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/components"
 	"github.com/mehran9675/touchup/internal/ui/store"
 	"github.com/mehran9675/touchup/internal/ui/theme"
@@ -40,7 +40,7 @@ type Engines struct {
 
 // NewEngines creates the page.
 func NewEngines(s *store.Store, errs *components.ErrorDetails, options *components.EngineSettings) *Engines {
-	e := &Engines{s: s, errors: errs, options: options, checking: map[string]bool{}, filter: theme.Segmented("All", "Image & video", "Audio", "Installed")}
+	e := &Engines{s: s, errors: errs, options: options, checking: map[string]bool{}, filter: theme.Segmented(tr.T("All"), tr.T("Image & video"), tr.T("Audio"), tr.T("Installed"))}
 	e.scroll = giode.Scroll(e.grid, giode.Styles{ScrollBar: giode.ScrollBar{Width: 4, ThumbColor: theme.Border}})
 	e.form = components.NewCustomEngineForm()
 	e.form.OnSave = func(m *engine.Manifest) error {
@@ -54,13 +54,13 @@ func NewEngines(s *store.Store, errs *components.ErrorDetails, options *componen
 	e.dialog = giode.Dialog(&e.formOn, func() giode.Element { return e.form }, giode.Styles{
 		Background: theme.Surface, BorderRadius: 20, Padding: giode.UniformInset(26),
 	})
-	e.add = theme.PrimaryButton("Add custom engine", "plus").OnClick(func() {
+	e.add = theme.PrimaryButton(tr.T("Add custom engine"), "plus").OnClick(func() {
 		e.form.Reset()
 		e.formOn = true
 	})
-	e.imp = theme.SecondaryButton("Import manifest", "file-code").OnClick(s.ImportManifest)
+	e.imp = theme.SecondaryButton(tr.T("Import manifest"), "file-code").OnClick(s.ImportManifest)
 	e.modelsScroll = giode.Scroll(e.modelList, giode.Styles{ScrollBar: giode.ScrollBar{Width: 4, ThumbColor: theme.Border}}).FitContent(true)
-	e.modelsClose = theme.SecondaryButton("Done", "").OnClick(func() { e.modelsOn = false })
+	e.modelsClose = theme.SecondaryButton(tr.T("Done"), "").OnClick(func() { e.modelsOn = false })
 	e.modelsDialog = giode.Dialog(&e.modelsOn, e.modelsView, giode.Styles{
 		Background: theme.Surface, BorderRadius: 20, Padding: giode.UniformInset(24),
 	})
@@ -71,8 +71,8 @@ func NewEngines(s *store.Store, errs *components.ErrorDetails, options *componen
 func (e *Engines) View() giode.Element {
 	return giode.Stack(giode.Styles{Width: -1, Height: -1},
 		giode.Stack(giode.Styles{Width: -1, Gap: 18, Padding: giode.Inset{Top: 28, Right: 32, Bottom: 8, Left: 32}},
-			components.PageHeader("Engines",
-				"Open-source models that run on this computer. Install what you need, or bring your own.",
+			components.PageHeader(tr.T("Engines"),
+				tr.T("Open-source models that run on this computer. Install what you need, or bring your own."),
 				e.imp, e.add),
 			giode.Row(giode.Styles{Width: -1, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap},
 				giode.Box(giode.Styles{Width: 540}, e.filter),
@@ -114,8 +114,8 @@ func (e *Engines) grid() giode.Element {
 	}
 	if len(shown) == 0 {
 		return giode.Box(giode.Styles{Width: -1, Height: 420},
-			components.EmptyState("package", "No engines installed",
-				"Install one of the built-in engines or add your own to get started."))
+			components.EmptyState("package", tr.T("No engines installed"),
+				tr.T("Install one of the built-in engines or add your own to get started.")))
 	}
 	return giode.Box(giode.Styles{Width: -1, Padding: giode.Inset{Top: 12, Right: 32, Bottom: 32, Left: 32}},
 		components.Grid(len(shown), 330, 18, func(i, width, height int) giode.Element {
@@ -142,46 +142,46 @@ func (e *Engines) footer(m *engine.Manifest) giode.Element {
 		if m.Homepage == "" {
 			return giode.Box(giode.Styles{})
 		}
-		return action("engine-home", "Website", "external-link", theme.GhostButton,
+		return action("engine-home", tr.T("Website"), "external-link", theme.GhostButton,
 			func() { go s.App.OpenURL(context.Background(), m.Homepage) })
 	}
 	remove := func() giode.Element {
 		if !m.Custom {
 			return giode.Box(giode.Styles{})
 		}
-		return action("engine-remove", "Delete", "trash", theme.DangerButton, func() { s.RemoveCustomEngine(m) })
+		return action("engine-remove", tr.T("Delete"), "trash", theme.DangerButton, func() { s.RemoveCustomEngine(m) })
 	}
 
 	switch {
 	case in.Running():
 		return components.InstallFooter(in.Status.Stage, in.Status.Frac,
-			action("engine-cancel", "Cancel", "x", theme.GhostButton, func() { s.CancelInstall(m.ID) }))
+			action("engine-cancel", tr.T("Cancel"), "x", theme.GhostButton, func() { s.CancelInstall(m.ID) }))
 	case in != nil && in.Err != "":
 		// The message is usually too long for a card: the card says what
 		// happened and Details shows the rest.
 		return row(
 			theme.Icon("triangle-alert", 16, theme.Danger),
-			giode.Box(giode.Styles{FlexGrow: 1}, giode.Text("Failed", theme.Label().With(giode.Styles{
+			giode.Box(giode.Styles{FlexGrow: 1}, giode.Text(tr.T("Failed"), theme.Label().With(giode.Styles{
 				FontSize: 12.5, Color: theme.Danger, MaxLines: 1, TextOverflow: giode.TextOverflowEllipsis,
 			}))),
 			components.CopyAction("engine-copy", m.ID, "", func() string {
-				return s.ErrorReport("Couldn't install "+m.Name, in.Err, in.Log)
+				return s.ErrorReport(tr.T("Couldn't install {engine}", "engine", m.Name), in.Err, in.Log)
 			}),
-			action("engine-details", "Details", "", theme.GhostButton, func() {
-				e.errors.Show("Couldn't install "+m.Name, s.ErrorReport("Couldn't install "+m.Name, in.Err, in.Log))
+			action("engine-details", tr.T("Details"), "", theme.GhostButton, func() {
+				e.errors.Show(tr.T("Couldn't install {engine}", "engine", m.Name), s.ErrorReport(tr.T("Couldn't install {engine}", "engine", m.Name), in.Err, in.Log))
 			}),
-			action("engine-retry", "Retry", "refresh-cw", theme.SecondaryButton, func() { s.InstallEngine(m) }),
+			action("engine-retry", tr.T("Retry"), "refresh-cw", theme.SecondaryButton, func() { s.InstallEngine(m) }),
 		)
 	case s.Installed(m.ID):
 		uninstall := giode.Element(giode.Box(giode.Styles{}))
 		if m.Install.Type != "none" {
-			uninstall = action("engine-uninstall", "Uninstall", "trash", theme.GhostButton, func() { s.UninstallEngine(m) })
+			uninstall = action("engine-uninstall", tr.T("Uninstall"), "trash", theme.GhostButton, func() { s.UninstallEngine(m) })
 		}
 		// Engines with options get a Settings button; the website shrinks
 		// to an icon to make room.
 		settings := giode.Element(giode.Box(giode.Styles{}))
 		if len(m.Options) > 0 {
-			label := "Settings"
+			label := tr.T("Settings")
 			if m.UsesTorch() {
 				label = "" // next to Check GPU, an icon is all that fits
 			}
@@ -200,15 +200,15 @@ func (e *Engines) footer(m *engine.Manifest) giode.Element {
 		}
 		// PyTorch engines get a GPU check; the website shrinks to an icon
 		// to make room.
-		check := action("engine-gpu", "Check GPU", "cpu", theme.GhostButton, func() {
+		check := action("engine-gpu", tr.T("Check GPU"), "cpu", theme.GhostButton, func() {
 			e.checking[m.ID] = true
 			s.CheckGPU(m, func(report string, err error) {
 				delete(e.checking, m.ID)
 				if err != nil {
 					report = err.Error()
 				}
-				e.errors.ShowReport("GPU check · "+m.Name,
-					"What "+m.Name+"'s PyTorch sees. Copy it to report a problem.", report, "cpu", theme.Primary)
+				e.errors.ShowReport(tr.T("GPU check · {engine}", "engine", m.Name),
+					tr.T("What {engine}'s PyTorch sees. Copy it to report a problem.", "engine", m.Name), report, "cpu", theme.Primary)
 			})
 		}).(*giode.ButtonElement).Loading(e.checking[m.ID])
 		site := giode.Element(giode.Box(giode.Styles{}))
@@ -221,11 +221,11 @@ func (e *Engines) footer(m *engine.Manifest) giode.Element {
 		}
 		return row(check, settings, site, spacer, uninstall, remove())
 	case !m.Supported():
-		return row(giode.Text("Not available for this system", theme.Caption()), spacer, remove())
+		return row(giode.Text(tr.T("Not available for this system"), theme.Caption()), spacer, remove())
 	}
-	verb := "Install"
+	verb := tr.T("Install")
 	if m.Install.Type == "none" {
-		verb = "Check again"
+		verb = tr.T("Check again")
 	}
 	return row(action("engine-install", verb, "download", theme.PrimaryButton, func() { s.InstallEngine(m) }),
 		website(), spacer, remove())
@@ -237,19 +237,19 @@ func (e *Engines) models(m *engine.Manifest) giode.Element {
 	if len(m.Models) == 0 {
 		return nil
 	}
-	summary := fmt.Sprintf("%d included", len(m.Models))
+	summary := tr.N("{count} included", len(m.Models))
 	if downloadable(m) {
-		summary = fmt.Sprintf("%d of %d installed", s.InstalledModels(m), len(m.Models))
+		summary = tr.N("{installed} of {count} installed", len(m.Models), "installed", s.InstalledModels(m))
 		if !s.Installed(m.ID) {
-			summary = fmt.Sprintf("%d to choose from", len(m.Models))
+			summary = tr.N("{count} to choose from", len(m.Models))
 		}
 	}
 	for i := range m.Models {
 		if s.ModelInstalls[store.ModelKey(m, &m.Models[i])].Running() {
-			summary = "Downloading…"
+			summary = tr.T("Downloading…")
 		}
 	}
-	return components.Clickable("engine-models", m.ID, "Models of "+m.Name, func() {
+	return components.Clickable("engine-models", m.ID, tr.T("Models of {engine}", "engine", m.Name), func() {
 		e.modelsOf, e.modelsOn = m, true
 		e.modelsScroll.ScrollTo(0)
 	}, func(st giode.PressState) giode.Element {
@@ -262,7 +262,7 @@ func (e *Engines) models(m *engine.Manifest) giode.Element {
 			Background: bg, BorderRadius: 10, Padding: giode.SymmetricInset(12, 9),
 		},
 			theme.Icon("layers", 15, theme.Primary),
-			giode.Text("Models", theme.Label().With(giode.Styles{FontSize: 12.5})),
+			giode.Text(tr.T("Models"), theme.Label().With(giode.Styles{FontSize: 12.5})),
 			giode.Box(giode.Styles{FlexGrow: 1}, giode.Text(summary, theme.Caption())),
 			theme.Icon("chevron-right", 14, theme.Muted),
 		)
@@ -286,18 +286,18 @@ func (e *Engines) modelsView() giode.Element {
 		return giode.Box(giode.Styles{})
 	}
 	s := e.s
-	sub := "These models come with the engine."
+	sub := tr.T("These models come with the engine.")
 	if downloadable(m) {
-		sub = "Download the models you want; each one appears in the studio once it's installed."
+		sub = tr.T("Download the models you want; each one appears in the studio once it's installed.")
 		if !s.Installed(m.ID) {
-			sub = "Install " + m.Name + " first, then download the models you want."
+			sub = tr.T("Install {engine} first, then download the models you want.", "engine", m.Name)
 		}
 	}
 	return giode.Stack(giode.Styles{Width: 600, Gap: 16},
 		giode.Row(giode.Styles{Gap: 12, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap},
 			components.IconBubble("layers", theme.Primary, 40),
 			giode.Stack(giode.Styles{Gap: 2, FlexGrow: 1},
-				giode.Text(m.Name+" models", theme.Heading().With(giode.Styles{FontSize: 18})),
+				giode.Text(tr.T("{engine} models", "engine", m.Name), theme.Heading().With(giode.Styles{FontSize: 18})),
 				giode.Text(sub, theme.Secondary()),
 			),
 		),
@@ -323,12 +323,12 @@ func (e *Engines) modelRow(m *engine.Manifest, mdl *engine.Model, engineInstalle
 	s := e.s
 	key := store.ModelKey(m, mdl)
 	in := s.ModelInstalls[key]
-	p := components.ModelRowProps{Name: mdl.Name, Description: mdl.Description, Detail: mdl.Size, Recommended: mdl.Recommended}
+	p := components.ModelRowProps{Name: tr.T(mdl.Name), Description: tr.T(mdl.Description), Detail: mdl.Size, Recommended: mdl.Recommended}
 	if len(mdl.Files) == 0 {
-		p.Detail = "Included"
+		p.Detail = tr.T("Included")
 		p.Installed = engineInstalled
 		if engineInstalled {
-			p.Detail = "comes with the engine"
+			p.Detail = tr.T("comes with the engine")
 		}
 		return components.ModelRow(p)
 	}
@@ -340,24 +340,17 @@ func (e *Engines) modelRow(m *engine.Manifest, mdl *engine.Model, engineInstalle
 	case in != nil && in.Err != "":
 		p.Err = in.Err
 		p.Copy = components.CopyAction("model-copy", key, "", func() string {
-			return s.ErrorReport("Couldn't download "+mdl.Name+" for "+m.Name, in.Err, in.Log)
+			return s.ErrorReport(tr.T("Couldn't download {model} for {engine}", "model", tr.T(mdl.Name), "engine", m.Name), in.Err, in.Log)
 		})
-		p.Action = components.Action("model-retry", key, func() *giode.ButtonElement { return theme.SecondaryButton("Retry", "rotate-ccw") },
+		p.Action = components.Action("model-retry", key, func() *giode.ButtonElement { return theme.SecondaryButton(tr.T("Retry"), "rotate-ccw") },
 			func() { s.DismissModelError(m, mdl); s.InstallModel(m, mdl) })
 	case s.ModelInstalled(m, mdl):
 		p.Installed = true
 		p.Action = components.Action("model-remove", key, func() *giode.ButtonElement { return theme.GhostButton("", "trash") },
 			func() { s.UninstallModel(m, mdl) })
 	case engineInstalled:
-		p.Action = components.Action("model-install", key, func() *giode.ButtonElement { return theme.SecondaryButton("Get", "download") },
+		p.Action = components.Action("model-install", key, func() *giode.ButtonElement { return theme.SecondaryButton(tr.T("Get"), "download") },
 			func() { s.InstallModel(m, mdl) })
 	}
 	return components.ModelRow(p)
-}
-
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
 }

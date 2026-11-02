@@ -5,6 +5,7 @@ import (
 	"github.com/mehran9675/giode/components/dialog"
 	"github.com/mehran9675/giode/components/scroll"
 
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
 
@@ -26,8 +27,8 @@ type ErrorDetails struct {
 // NewErrorDetails creates the dialog, closed.
 func NewErrorDetails() *ErrorDetails {
 	d := &ErrorDetails{}
-	d.close = theme.SecondaryButton("Close", "").OnClick(func() { d.open = false })
-	d.copy = theme.CopyButton("Copy all", func() string { return d.text })
+	d.close = theme.SecondaryButton(tr.T("Close"), "").OnClick(func() { d.open = false })
+	d.copy = theme.CopyButton(tr.T("Copy all"), func() string { return d.text })
 	// The reason is at the end of a log, so it opens scrolled to the end.
 	d.log = giode.Scroll(func() giode.Element {
 		return giode.Box(giode.Styles{Width: -1, Padding: giode.UniformInset(14)},
@@ -42,7 +43,7 @@ func NewErrorDetails() *ErrorDetails {
 
 // Show opens the dialog with a title and an error's full report.
 func (d *ErrorDetails) Show(title, report string) {
-	d.ShowReport(title, "The whole error, with what it printed. Copy it to report the problem.", report, "triangle-alert", theme.Danger)
+	d.ShowReport(title, tr.T("The whole error, with what it printed. Copy it to report the problem."), report, "triangle-alert", theme.Danger)
 }
 
 // ShowReport opens the dialog for any long text, such as a diagnostic

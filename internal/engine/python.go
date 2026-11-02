@@ -14,6 +14,7 @@ import (
 
 	"github.com/mehran9675/touchup/internal/paths"
 	"github.com/mehran9675/touchup/internal/proc"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // TouchUp runs Python engines on its own copy of Python, a standalone
@@ -59,7 +60,7 @@ func PythonStatus(configured string) (path, note string) {
 	if exists(ManagedPython()) {
 		return ManagedPython(), "TouchUp's own Python " + pythonVersion
 	}
-	return "", "TouchUp downloads its own Python " + pythonVersion + " the first time you install a Python engine."
+	return "", tr.T("TouchUp downloads its own Python {version} the first time you install a Python engine.", "version", pythonVersion)
 }
 
 // EnsurePython returns a Python that can create environments for
@@ -68,7 +69,7 @@ func PythonStatus(configured string) (path, note string) {
 func EnsurePython(ctx context.Context, configured string, report Report) (string, error) {
 	if configured != "" {
 		if err := checkPython(ctx, configured); err != nil {
-			return "", fmt.Errorf("the Python set in Settings can't be used: %w. Clear it to let TouchUp use its own", err)
+			return "", fmt.Errorf("%s: %w. %s", tr.T("the Python set in Settings can't be used"), err, tr.T("Clear it to let TouchUp use its own."))
 		}
 		return configured, nil
 	}
@@ -78,7 +79,7 @@ func EnsurePython(ctx context.Context, configured string, report Report) (string
 	}
 	build, ok := pythonBuilds[runtime.GOOS+"/"+runtime.GOARCH]
 	if !ok {
-		return "", errors.New("there's no standalone Python for this system; install Python 3.12 and set its path in Settings")
+		return "", errors.New(tr.T("there's no standalone Python for this system; install Python 3.12 and set its path in Settings"))
 	}
 	name := fmt.Sprintf("cpython-%s+%s-%s-install_only.tar.gz", pythonVersion, pythonRelease, build.target)
 	url := "https://github.com/astral-sh/python-build-standalone/releases/download/" + pythonRelease + "/" + name
@@ -89,15 +90,15 @@ func EnsurePython(ctx context.Context, configured string, report Report) (string
 	tmp.Close()
 	defer os.Remove(tmp.Name())
 	if err := download(ctx, url, tmp.Name(), func(frac float64) {
-		report(Status{Stage: "Downloading Python", Frac: frac})
+		report(Status{Stage: tr.T("Downloading Python"), Frac: frac})
 	}); err != nil {
-		return "", fmt.Errorf("downloading Python: %w", err)
+		return "", fmt.Errorf("%s: %w", tr.T("downloading Python"), err)
 	}
-	report(Status{Stage: "Verifying Python", Frac: -1})
+	report(Status{Stage: tr.T("Verifying Python"), Frac: -1})
 	if err := verify(tmp.Name(), build.sha256); err != nil {
-		return "", fmt.Errorf("downloading Python: %w", err)
+		return "", fmt.Errorf("%s: %w", tr.T("downloading Python"), err)
 	}
-	report(Status{Stage: "Unpacking Python", Frac: -1})
+	report(Status{Stage: tr.T("Unpacking Python"), Frac: -1})
 	dir := filepath.Dir(py)
 	if runtime.GOOS != "windows" {
 		dir = filepath.Dir(dir) // bin/python3
@@ -105,11 +106,11 @@ func EnsurePython(ctx context.Context, configured string, report Report) (string
 	os.RemoveAll(dir)
 	if err := extract(tmp.Name(), dir); err != nil {
 		os.RemoveAll(dir)
-		return "", fmt.Errorf("unpacking Python: %w", err)
+		return "", fmt.Errorf("%s: %w", tr.T("unpacking Python"), err)
 	}
 	if err := checkPython(ctx, py); err != nil {
 		os.RemoveAll(dir)
-		return "", fmt.Errorf("the downloaded Python doesn't run: %w", err)
+		return "", fmt.Errorf("%s: %w", tr.T("the downloaded Python doesn't run"), err)
 	}
 	return py, nil
 }
@@ -118,7 +119,7 @@ func EnsurePython(ctx context.Context, configured string, report Report) (string
 // PyTorch supports, with venv and pip's bootstrapper.
 func checkPython(ctx context.Context, py string) error {
 	if strings.Contains(strings.ToLower(py), `\windowsapps\`) {
-		return errors.New("it's the Microsoft Store shortcut, not an installed Python")
+		return errors.New(tr.T("it's the Microsoft Store shortcut, not an installed Python"))
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -130,7 +131,7 @@ func checkPython(ctx context.Context, py string) error {
 		msg := strings.TrimSpace(stderr.String())
 		switch {
 		case strings.Contains(msg, "ensurepip") || strings.Contains(msg, "venv"):
-			return errors.New("it lacks venv (on Debian and Ubuntu, install python3-venv)")
+			return errors.New(tr.T("it lacks venv (on Debian and Ubuntu, install python3-venv)"))
 		case msg != "":
 			lines := strings.Split(msg, "\n")
 			return errors.New(strings.TrimSpace(lines[len(lines)-1]))
@@ -141,7 +142,7 @@ func checkPython(ctx context.Context, py string) error {
 	major, minor, _ := strings.Cut(version, ".")
 	m, _ := strconv.Atoi(minor)
 	if major != "3" || m < minPython || m > maxPython {
-		return fmt.Errorf("it's Python %s; engines need 3.%d to 3.%d", version, minPython, maxPython)
+		return errors.New(tr.T("it's Python {version}; engines need 3.{min} to 3.{max}", "version", version, "min", minPython, "max", maxPython))
 	}
 	return nil
 }

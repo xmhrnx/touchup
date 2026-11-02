@@ -10,6 +10,7 @@ import (
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/settings"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // Options select the engine and how it runs.
@@ -38,10 +39,10 @@ type Reporter func(Update)
 
 func (o Options) check() error {
 	if o.Engine == nil {
-		return errors.New("choose an engine first")
+		return errors.New(tr.T("choose an engine first"))
 	}
 	if !o.Engine.Installed() {
-		return errors.New(o.Engine.Name + " is not installed")
+		return errors.New(tr.T("{engine} is not installed", "engine", o.Engine.Name))
 	}
 	if !o.Tools.Ready() {
 		return media.ErrNoFFmpeg

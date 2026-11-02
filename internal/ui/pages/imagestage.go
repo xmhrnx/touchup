@@ -3,6 +3,7 @@ package pages
 import (
 	"github.com/mehran9675/giode"
 
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/components"
 	"github.com/mehran9675/touchup/internal/ui/store"
 	"github.com/mehran9675/touchup/internal/ui/theme"
@@ -28,7 +29,7 @@ func (i *ImageStage) View() giode.Element {
 				Background: "#0B0B10CC", BorderRadius: 999, Padding: giode.SymmetricInset(12, 7),
 			},
 				theme.Icon("image", 14, "#D4D4DC"),
-				giode.Text("Original", giode.Styles{FontFamily: theme.Sans, FontSize: 12, Color: "#D4D4DC"}),
+				giode.Text(tr.T("Original"), giode.Styles{FontFamily: theme.Sans, FontSize: 12, Color: "#D4D4DC"}),
 			)),
 	)
 }

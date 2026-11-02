@@ -9,6 +9,7 @@ import (
 	"github.com/mehran9675/giode/components/scroll"
 
 	"github.com/mehran9675/touchup/internal/engine"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
 
@@ -37,8 +38,8 @@ type EngineSettings struct {
 // NewEngineSettings creates the dialog, closed.
 func NewEngineSettings(store EngineSettingsStore) *EngineSettings {
 	d := &EngineSettings{store: store}
-	d.done = theme.PrimaryButton("Done", "").OnClick(func() { d.open = false })
-	d.defaults = theme.GhostButton("Reset to defaults", "rotate-ccw").OnClick(func() {
+	d.done = theme.PrimaryButton(tr.T("Done"), "").OnClick(func() { d.open = false })
+	d.defaults = theme.GhostButton(tr.T("Reset to defaults"), "rotate-ccw").OnClick(func() {
 		if d.engine != nil {
 			store.ResetEngineOptions(d.engine)
 			d.build()
@@ -72,15 +73,14 @@ func (d *EngineSettings) build() {
 	d.rows = nil
 	for i := range m.Options {
 		o := &m.Options[i]
-		desc := o.Description
-		if desc != "" {
-			desc += " "
+		desc := tr.T("Default: {value}.", "value", OptionLabel(o, o.Default))
+		if o.Description != "" {
+			desc = tr.T(o.Description) + " " + desc
 		}
-		desc += "Default: " + o.Label(o.Default) + "."
 		if i > 0 {
 			d.rows = append(d.rows, giode.Divider(giode.Styles{Color: theme.Faint()}))
 		}
-		d.rows = append(d.rows, SettingRow(o.Name, desc, d.control(o, values[o.ID])))
+		d.rows = append(d.rows, SettingRow(tr.T(o.Name), desc, d.control(o, values[o.ID])))
 	}
 }
 
@@ -110,7 +110,7 @@ func (d *EngineSettings) control(o *engine.Option, value string) giode.Element {
 	labels := make([]string, len(o.Choices))
 	selected := 0
 	for i, c := range o.Choices {
-		labels[i] = c.Label
+		labels[i] = tr.T(c.Label)
 		if c.Value == value {
 			selected = i
 		}
@@ -131,8 +131,8 @@ func (d *EngineSettings) view() giode.Element {
 		giode.Row(giode.Styles{Gap: 12, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap},
 			IconBubble("sliders-horizontal", theme.Primary, 40),
 			giode.Stack(giode.Styles{Gap: 2, FlexGrow: 1},
-				giode.Text(d.engine.Name+" settings", theme.Heading().With(giode.Styles{FontSize: 18})),
-				giode.Text("Changes save as you make them and apply to the next preview or job.", theme.Secondary()),
+				giode.Text(tr.T("{engine} settings", "engine", d.engine.Name), theme.Heading().With(giode.Styles{FontSize: 18})),
+				giode.Text(tr.T("Changes save as you make them and apply to the next preview or job."), theme.Secondary()),
 			),
 		),
 		giode.Box(giode.Styles{Width: -1, MaxHeight: 480}, d.scroll),

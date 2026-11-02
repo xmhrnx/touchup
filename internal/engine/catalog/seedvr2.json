@@ -10,6 +10,8 @@
   "requirements": "Python 3.10–3.13 · NVIDIA GPU with 8 GB+ (16 GB+ for 7B) · FFmpeg",
   "media": ["video", "image"],
   "input": "video",
+  "batch": true,
+  "serve": true,
   "imageOutputExt": ".png",
   "install": {
     "type": "pip",
@@ -20,7 +22,9 @@
         "args": ["torch>=2.7", "torchvision"],
         "indexURL": {"windows": "https://download.pytorch.org/whl/cu128"}
       },
-      {"args": ["-r", "{engineDir}/src/requirements.txt"]}
+      {"args": ["-r", "{engineDir}/src/requirements.txt"]},
+      {"args": ["triton-windows>=3.3,<3.7"], "os": ["windows"], "optional": true},
+      {"args": ["sageattention==1.0.6"], "os": ["windows", "linux"], "optional": true}
     ],
     "scripts": ["seedvr2_launch.py"]
   },
@@ -248,6 +252,18 @@
       "args": ["--blocks_to_swap", "{value}"]
     },
     {
+      "id": "attention",
+      "name": "Attention",
+      "type": "choice",
+      "default": "sageattn_2",
+      "description": "SageAttention runs the model's attention in 8-bit, which is much faster, notably on Windows, where PyTorch's own lacks its fastest kernels. Its first run compiles kernels for the GPU, which takes a minute once. When it isn't installed, PyTorch's is used.",
+      "choices": [
+        {"value": "sageattn_2", "label": "SageAttention (fastest)"},
+        {"value": "sdpa", "label": "PyTorch"}
+      ],
+      "args": ["--attention_mode", "{value}"]
+    },
+    {
       "id": "cudnn",
       "name": "Tune GPU kernels",
       "type": "toggle",
@@ -307,6 +323,7 @@
   "tune": {
     "seconds": 2,
     "steps": [
+      {"option": "attention", "values": ["sdpa"]},
       {"option": "vaeMemory", "values": ["1", "2", "4"]},
       {"option": "tile", "values": ["768", "1024"]},
       {"option": "cudnn", "values": ["true"]},

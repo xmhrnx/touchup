@@ -3,6 +3,7 @@ package components
 import (
 	"github.com/mehran9675/giode"
 
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
 
@@ -36,15 +37,15 @@ func DropZone(active bool, browse giode.Element) giode.Element {
 			BackgroundGradient: theme.BrandGradient(),
 			BoxShadow:          giode.BoxShadow{Y: 10, Blur: 30, Color: "#7C5CFF66"},
 		}, theme.Icon("cloud-upload", 34, "#FFFFFF")),
-		giode.Text("Drop a photo, video or song", theme.Display().With(giode.Styles{FontSize: 24})),
+		giode.Text(tr.T("Drop a photo, video or song"), theme.Display().With(giode.Styles{FontSize: 24})),
 		giode.Box(giode.Styles{MaxWidth: 520},
-			giode.Text("Everything runs on this computer with the engines you install. Nothing is uploaded.",
+			giode.Text(tr.T("Everything runs on this computer with the engines you install. Nothing is uploaded."),
 				theme.Secondary().With(giode.Styles{TextAlign: giode.TextAlignCenter}))),
 		browse,
 		giode.Row(giode.Styles{Gap: 12, Justify: giode.JustifyCenter, Margin: giode.Inset{Top: 10}},
-			kind("image", "Images", "PNG · JPEG · WebP", theme.Info),
-			kind("film", "Video", "MP4 · MOV · MKV", theme.Accent),
-			kind("audio-lines", "Audio", "WAV · FLAC · MP3", theme.Success),
+			kind("image", tr.T("Images"), "PNG · JPEG · WebP", theme.Info),
+			kind("film", tr.T("Video"), "MP4 · MOV · MKV", theme.Accent),
+			kind("audio-lines", tr.T("Audio"), "WAV · FLAC · MP3", theme.Success),
 		),
 	)
 }

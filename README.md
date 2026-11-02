@@ -43,6 +43,11 @@ before/after comparisons. Nothing is uploaded.
   spilling back on.
 - **Output control.** PNG/JPEG/WebP, H.264/H.265/ProRes with a quality setting, WAV/FLAC/MP3,
   GPU selection, and a custom output folder.
+- In 26 languages: English, Bulgarian, Croatian, Czech, Danish, Dutch, Estonian, Finnish,
+  French, German, Greek, Hungarian, Irish, Italian, Latvian, Lithuanian, Maltese, Norwegian
+  Bokmål, Polish, Portuguese, Romanian, Slovak, Slovenian, Spanish, Swedish and Ukrainian, with
+  each language's own number formats. It follows the system's language, or the one chosen in
+  **Settings → Language**.
 - Dark and light themes, file drop, and "Open with TouchUp" on every desktop.
 - A custom title bar on Windows. Linux and macOS keep the system frame, because Gio can't
   resize a frameless window from its edges there; set `TOUCHUP_CUSTOM_FRAME=1` to use the
@@ -55,7 +60,8 @@ The strongest engines are listed first.
 | Engine | Media | What it's best at | Install |
 | --- | --- | --- | --- |
 | [SeedVR2](https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler) (3B, 7B, 7B Sharp; FP8 and GGUF) | Video, image | One-step diffusion restoration with real, steady texture: the strongest open video upscaler | Python, NVIDIA GPU (8 GB+) |
-| PyTorch SR, through [spandrel](https://github.com/chaiNNer-org/spandrel) | Image, video | 13 community models: DRCT-L, DAT, ATD, DAT2 web photos, RealPLKSR (fast), SwinIR-L, Real-ESRGAN, anime and AI-art models | Python, NVIDIA GPU recommended |
+| [FlashVSR](https://github.com/OpenImagingLab/FlashVSR) v1.1, through [FlashVSR Ultra Fast](https://github.com/lihaoyun6/ComfyUI-FlashVSR_Ultra_Fast) | Video | One-step streaming diffusion: detail like SeedVR2's at several times the speed, for long videos | Python, NVIDIA GPU (8 GB+) |
+| PyTorch SR, through [spandrel](https://github.com/chaiNNer-org/spandrel) | Image, video | 13 community models that restore rather than invent detail, in seconds: DAT2 and RealPLKSR trained on compressed photos, DRCT-L and ATD for clean sources, SwinIR-L, Real-ESRGAN, anime and AI-art models | Python, NVIDIA GPU recommended |
 | [Apollo](https://github.com/JusperLee/Apollo) | Audio | Restoring music damaged by MP3 and streaming compression | Python |
 | [AudioSR](https://github.com/haoheliu/versatile_audio_super_resolution) | Audio | Diffusion bandwidth extension to 48 kHz for music, speech and effects | Python |
 | [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) (x4plus, anime, anime video v3) | Image, video | Fast all-rounder on any GPU | Download, Vulkan GPU |
@@ -82,7 +88,21 @@ capability, and whether a small test runs on it in full and half precision.
 SeedVR2 runs through `seedvr2_launch.py`, which rounds its chunks of video to whole batches, lets
 its VAE use more memory per step than SeedVR2's 0.5 GB when there's room, and can turn on cuDNN's
 kernel tuning. SeedVR2 can't split a picture, so TouchUp upscales pictures over 2048 pixels a side
-(an engine setting) in overlapping parts and joins them with feathered seams.
+(an engine setting) in overlapping parts and joins them with feathered seams; the parts go to SeedVR2
+as one folder, so it starts and loads its model once. Its attention runs on
+[SageAttention](https://github.com/thu-ml/SageAttention) when it's installed (an optional step of the
+install, through Triton, which on Windows is `triton-windows`), which is much faster than PyTorch's
+own on Windows.
+
+SeedVR2 and FlashVSR stay running between jobs (`serve` in the manifest), so previews and later
+jobs skip starting Python and loading the model: TouchUp sends a server each job with the same
+settings, and stops it after ten idle minutes, when settings change, when another engine runs, after a
+failed or cancelled job, and when it quits.
+
+FlashVSR runs through `flashvsr_runner.py` on FlashVSR Ultra Fast's pipeline, whose Triton attention
+kernels need no compiling and run on RTX 20 to 50 cards. It upscales video frames in chunks that
+start with a few frames of the chunk before, in overlapping tiles, and pads frames to the sizes the
+model needs instead of cropping them.
 
 Diffusion models like SeedVR2 take seconds per frame on any home GPU, so a TV episode takes hours;
 TouchUp warns before such a job. Which of its settings are fastest depends on the GPU, so **Find the
@@ -167,9 +187,10 @@ manifest and use **Import manifest**. This one is the built-in Real-CUGAN, sligh
 | --- | --- |
 | `media` | What the engine upscales: `image`, `video`, `audio`. |
 | `input` | What the program reads. An `image` engine listed for `video` runs on every frame; a `video` engine gets the whole file, and TouchUp copies the original audio back in. |
-| `batch` | The program accepts folders for `{input}` and `{output}`, so video frames go through in one run. |
+| `batch` | The program accepts folders for `{input}` and `{output}`, so video frames, and the parts of a picture split by `touchup.tileImage`, go through in one run. |
+| `serve` | The program can stay running between jobs. Started with `TOUCHUP_SERVE=1` in its environment, it runs the job in its arguments, prints `TOUCHUP-SERVE-DONE <exit code>`, then reads further jobs from standard input, each a JSON array of the command's arguments on one line, until it closes. |
 | `install.type` | `archive` (a `.zip` or `.tar.gz` per platform; a single top folder is unwrapped), `pip` (a private virtual environment) or `none` (a program already on the computer). |
-| `install.packages`, `install.pip` | For `pip`: requirement specifiers, and further install steps in order, each with `args` and an optional `indexURL` by OS (for PyTorch's CUDA builds on Windows). `{engineDir}` works in `args`, so a step can be `["-r", "{engineDir}/src/requirements.txt"]`. |
+| `install.packages`, `install.pip` | For `pip`: requirement specifiers, and further install steps in order, each with `args`, an optional `indexURL` by OS (for PyTorch's CUDA builds on Windows), `os` to limit it to some systems, and `optional` for extras the engine works without. `{engineDir}` works in `args`, so a step can be `["-r", "{engineDir}/src/requirements.txt"]`. |
 | `install.source` | For `pip`: a `url` of an archive of the engine's code and the `dir` to unpack it into, before the packages install. |
 | `executable` | The program by OS (`linux`, `windows`, `darwin`, or `*`): a path, or a name looked up in the install folder, the Python environment, or `PATH`. |
 | `args` | Arguments with placeholders: `{input}`, `{output}`, `{inputDir}`, `{outputDir}`, `{scale}`, `{gpu}`, `{engineDir}`, `{model}`, `{modelDir}`, `{modelPath}` (the model's first file), `{inWidth}`, `{inHeight}`, `{outWidth}`, `{outHeight}` and `{outShort}` (for engines that take a target resolution). An argument that is exactly `{modelArgs}` becomes the selected model's `args`. A Python engine's `executable` can be `python`, its environment's interpreter. |
@@ -189,8 +210,10 @@ Custom manifests are stored next to the installed engines, in `custom-engines/`.
 main.go                 window setup and the root view
 assets/                 app icon, Inter font, Lucide icons (with their licenses)
 tools/icon/             draws assets/icon.png: go run ./tools/icon assets/icon.png
+tools/i18n/             lists the messages and checks the translations (see Translations)
 internal/
-  engine/               manifests, the built-in catalog, install, run
+  engine/               manifests, the built-in catalog, install, run, engine servers
+    scripts/            runner and launcher scripts shipped to Python engines
   media/                FFmpeg: probe, frames, clips, waveforms, spectrograms, playback
   pipeline/             whole-file upscaling and previews, built on engine + media
   settings/, paths/     preferences and where files live
@@ -201,8 +224,26 @@ internal/
     pages/              Studio (with its stages and inspector), Engines, Queue, Settings
     components/         reusable components, one per file
     theme/, draw/       colors, type, buttons, icons; custom painting helpers
-    format/             durations, sizes and rates as text
+    format/             durations, sizes and rates as text, in the user's language
+  tr/                   translation: tr.T and tr.N, number formats, the language list
 ```
+
+## Translations
+
+Messages are their English text: `tr.T("Saved to {folder}", "folder", dir)`, or for plurals
+`tr.N("{count} engines installed", n)` with the English forms in `assets/locales/en.json`. A
+translation is `assets/locales/<code>.json`, keyed by the English text and embedded in the app;
+a message it lacks shows in English. The built-in engines' descriptions, tags, model names and
+settings are translated the same way, while custom engines show as their manifests say.
+
+```sh
+go run ./tools/i18n -write   # rewrite tools/i18n/template.json from the code and catalog
+go run ./tools/i18n          # report missing, unused and mismatched messages per language
+```
+
+`tools/i18n/BRIEF.md` is the guide for translators: what to keep, placeholders, and each
+language's plural forms. To add a language, translate the template into a new file and add it
+to `internal/tr/languages.go`.
 
 ## License
 

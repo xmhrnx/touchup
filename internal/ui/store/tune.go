@@ -10,6 +10,7 @@ import (
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/pipeline"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // CanTune reports whether the selected video engine has settings to
@@ -37,7 +38,7 @@ func (s *Store) RunTune() {
 	ctx, cancel := context.WithCancel(sess.ctx)
 	p := &sess.Preview
 	p.Running, p.Tuning, p.Err, p.ErrLog, p.cancel = true, true, "", "", cancel
-	p.Update, p.Started = pipeline.Update{Stage: "Starting", Frac: 0}, time.Now()
+	p.Update, p.Started = pipeline.Update{Stage: tr.T("Starting"), Frac: 0}, time.Now()
 	p.Log.reset()
 	p.Pace.reset()
 	report := func(u pipeline.Update) {
@@ -66,7 +67,7 @@ func (s *Store) RunTune() {
 			case errors.Is(err, context.Canceled):
 				return
 			case err != nil:
-				p.Err, p.ErrLog = "Timing "+m.Name+" failed: "+errSummary(err), engine.LogOf(err)
+				p.Err, p.ErrLog = tr.T("Timing {engine} failed: {reason}", "engine", m.Name, "reason", errSummary(err)), engine.LogOf(err)
 				return
 			}
 			s.applyTuning(m, res)
@@ -84,13 +85,13 @@ func (s *Store) applyTuning(m *engine.Manifest, res pipeline.TuneResult) {
 		}
 	}
 	if changed {
-		s.Toasts.Show(giode.ToastSuccess, "Saved the fastest settings for "+m.Name)
+		s.Toasts.Show(giode.ToastSuccess, tr.T("Saved the fastest settings for {engine}", "engine", m.Name))
 	} else {
-		s.Toasts.Show(giode.ToastInfo, m.Name+"'s settings were already the fastest")
+		s.Toasts.Show(giode.ToastInfo, tr.T("{engine}'s settings were already the fastest", "engine", m.Name))
 	}
 	if s.ShowReport != nil {
-		s.ShowReport(m.Name+" timed on this computer",
-			"Each setting was tried on a short clip of this video; the fastest that worked is saved.",
+		s.ShowReport(tr.T("{engine} timed on this computer", "engine", m.Name),
+			tr.T("Each setting was tried on a short clip of this video; the fastest that worked is saved."),
 			res.Describe(m))
 	}
 }

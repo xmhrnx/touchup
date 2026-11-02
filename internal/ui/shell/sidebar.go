@@ -1,11 +1,11 @@
 package shell
 
 import (
-	"fmt"
-
 	"github.com/mehran9675/giode"
 
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/components"
+	"github.com/mehran9675/touchup/internal/ui/format"
 	"github.com/mehran9675/touchup/internal/ui/store"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
@@ -21,12 +21,12 @@ func Sidebar(s *store.Store) giode.Element {
 		Padding: giode.Inset{Top: 22, Right: 14, Bottom: 16, Left: 14},
 	},
 		giode.Box(giode.Styles{Padding: giode.Inset{Left: 6, Bottom: 22}}, components.BrandMark()),
-		giode.Box(giode.Styles{Padding: giode.Inset{Left: 12, Bottom: 6}}, giode.Text("Workspace", theme.Overline())),
-		nav(store.PageStudio, "wand-sparkles", "Studio", 0),
-		nav(store.PageQueue, "list-checks", "Queue", s.ActiveJobs()),
-		giode.Box(giode.Styles{Padding: giode.Inset{Left: 12, Top: 18, Bottom: 6}}, giode.Text("Library", theme.Overline())),
-		nav(store.PageEngines, "layers", "Engines", 0),
-		nav(store.PageSettings, "settings", "Settings", 0),
+		giode.Box(giode.Styles{Padding: giode.Inset{Left: 12, Bottom: 6}}, giode.Text(tr.T("Workspace"), theme.Overline())),
+		nav(store.PageStudio, "wand-sparkles", tr.T("Studio"), 0),
+		nav(store.PageQueue, "list-checks", tr.T("Queue"), s.ActiveJobs()),
+		giode.Box(giode.Styles{Padding: giode.Inset{Left: 12, Top: 18, Bottom: 6}}, giode.Text(tr.T("Library"), theme.Overline())),
+		nav(store.PageEngines, "layers", tr.T("Engines"), 0),
+		nav(store.PageSettings, "settings", tr.T("Settings"), 0),
 		giode.Box(giode.Styles{FlexGrow: 1}),
 		statusCard(s),
 	)
@@ -45,7 +45,7 @@ func statusCard(s *store.Store) giode.Element {
 						giode.Text(j.Name, theme.Label().With(giode.Styles{FontSize: 12, TextOverflow: giode.TextOverflowEllipsis}))),
 				),
 				components.ProgressBar(j.Update.Frac, 4),
-				giode.Text(fmt.Sprintf("%s · %d%%", j.Update.Stage, int(max(0, j.Update.Frac)*100)), theme.Caption()),
+				giode.Text(j.Update.Stage+" · "+format.Percent(float64(int(max(0, j.Update.Frac)*100))/100, 0), theme.Caption()),
 			)
 		}
 	}
@@ -55,12 +55,12 @@ func statusCard(s *store.Store) giode.Element {
 			installed++
 		}
 	}
-	tone, title, text := giode.Color(theme.Success), "Ready", fmt.Sprintf("%d engine%s installed", installed, plural(installed))
+	tone, title, text := giode.Color(theme.Success), tr.T("Ready"), tr.N("{count} engines installed", installed)
 	switch {
 	case !s.Tools.Ready():
-		tone, title, text = theme.Warning, "FFmpeg needed", "Install FFmpeg or set its path in Settings"
+		tone, title, text = theme.Warning, tr.T("FFmpeg needed"), tr.T("Install FFmpeg or set its path in Settings")
 	case installed == 0:
-		tone, title, text = theme.Info, "Almost ready", "Install an engine to start"
+		tone, title, text = theme.Info, tr.T("Almost ready"), tr.T("Install an engine to start")
 	}
 	return giode.Row(giode.Styles{
 		Width: -1, Gap: 10, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap,
@@ -72,11 +72,4 @@ func statusCard(s *store.Store) giode.Element {
 			giode.Text(text, theme.Caption().With(giode.Styles{FontSize: 11})),
 		),
 	)
-}
-
-func plural(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
 }

@@ -1,10 +1,9 @@
 package pages
 
 import (
-	"fmt"
-
 	"github.com/mehran9675/giode"
 
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/components"
 	"github.com/mehran9675/touchup/internal/ui/format"
 	"github.com/mehran9675/touchup/internal/ui/store"
@@ -41,15 +40,15 @@ func NewVideoStage(s *store.Store, errs *components.ErrorDetails) *VideoStage {
 	v.prev.Icon(giode.Box(giode.Styles{Transform: giode.Transform{Rotate: 180}},
 		giode.Icon("chevron-right", giode.Styles{Width: 15, Height: 15})))
 	v.next = theme.SecondaryButton("", "chevron-right").OnClick(step(1))
-	v.cancel = theme.GhostButton("Cancel", "x").OnClick(s.CancelPreview)
-	v.dismiss = theme.GhostButton("Dismiss", "").OnClick(s.DismissPreviewError)
-	v.details = theme.GhostButton("Details", "").OnClick(func() {
+	v.cancel = theme.GhostButton(tr.T("Cancel"), "x").OnClick(s.CancelPreview)
+	v.dismiss = theme.GhostButton(tr.T("Dismiss"), "").OnClick(s.DismissPreviewError)
+	v.details = theme.GhostButton(tr.T("Details"), "").OnClick(func() {
 		if sess := s.Session; sess != nil {
-			errs.Show("The preview failed", previewReport(s))
+			errs.Show(tr.T("The preview failed"), previewReport(s))
 		}
 	})
-	v.copy = theme.CopyButton("Copy", func() string { return previewReport(s) })
-	v.copyLog = theme.CopyButton("Copy log", func() string { return runningPreviewReport(s) })
+	v.copy = theme.CopyButton(tr.T("Copy"), func() string { return previewReport(s) })
+	v.copyLog = theme.CopyButton(tr.T("Copy log"), func() string { return runningPreviewReport(s) })
 	return v
 }
 
@@ -61,12 +60,12 @@ func (v *VideoStage) View() giode.Element {
 
 	var viewer giode.Element
 	if matches {
-		v.compare.Set(p.Frame.Before, p.Frame.After, "Original", fmt.Sprintf("TouchUp · %s", p.Label))
+		v.compare.Set(p.Frame.Before, p.Frame.After, tr.T("Original"), "TouchUp · "+p.Label)
 		viewer = v.compare
 	} else {
-		hint := "Pick a moment on the timeline, then preview it"
+		hint := tr.T("Pick a moment on the timeline, then preview it")
 		if p.Frame != nil {
-			hint = "The playhead moved. Preview this frame to compare again"
+			hint = tr.T("The playhead moved. Preview this frame to compare again")
 		}
 		viewer = giode.Box(giode.Styles{Width: -1, Height: -1, BorderRadius: 14, Overflow: giode.OverflowHidden, Background: "#050507"},
 			components.Picture(sess.Picture),
@@ -85,9 +84,9 @@ func (v *VideoStage) View() giode.Element {
 		}
 	}
 	if p.Running {
-		title := "Previewing " + format.Clock(sess.Time)
+		title := tr.T("Previewing {time}", "time", format.Clock(sess.Time))
 		if p.Tuning {
-			title = "Finding the fastest settings"
+			title = tr.T("Finding the fastest settings")
 		}
 		viewer = withOverlay(viewer, centered(components.ProgressPanel(
 			title, p.Update.Stage, p.Update.Frac, p.Update.Line,
@@ -110,13 +109,13 @@ func (v *VideoStage) View() giode.Element {
 		giode.Text(format.Clock(sess.Time), theme.Label().With(giode.Styles{FontSize: 15, FontWeight: giode.FontWeightSemiBold})),
 		giode.Text("/ "+format.Clock(sess.Info.Duration), theme.Secondary()),
 		giode.Box(giode.Styles{FlexGrow: 1}),
-		giode.Text(fmt.Sprintf("Frame %d of %d", frame, sess.Info.Frames), theme.Caption()),
+		giode.Text(tr.T("Frame {frame} of {total}", "frame", format.Count(frame), "total", format.Count(sess.Info.Frames)), theme.Caption()),
 		v.prev, v.next,
 	)
 
 	children := []giode.Element{giode.Box(giode.Styles{Width: -1, FlexGrow: 1, MinHeight: 260}, viewer)}
 	if p.Err != "" {
-		children = append(children, components.Banner("triangle-alert", theme.Danger, "The preview failed", p.Err, v.copy, v.details, v.dismiss))
+		children = append(children, components.Banner("triangle-alert", theme.Danger, tr.T("The preview failed"), p.Err, v.copy, v.details, v.dismiss))
 	}
 	children = append(children, controls, v.timeline)
 	return giode.Stack(giode.Styles{Width: -1, Height: -1, Gap: 14}, children...)

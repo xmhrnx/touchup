@@ -4,6 +4,7 @@ import (
 	"github.com/mehran9675/giode"
 
 	"github.com/mehran9675/touchup/internal/engine"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
 
@@ -34,7 +35,7 @@ func EngineOption(m *engine.Manifest, selected, installed bool, note string, onC
 		sub := m.Vendor
 		switch {
 		case !installed:
-			sub = "Not installed · open Engines"
+			sub = tr.T("Not installed · open Engines")
 		case note != "":
 			sub = note
 		}

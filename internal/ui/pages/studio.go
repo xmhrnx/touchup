@@ -4,6 +4,7 @@ import (
 	"github.com/mehran9675/giode"
 
 	"github.com/mehran9675/touchup/internal/media"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/components"
 	"github.com/mehran9675/touchup/internal/ui/format"
 	"github.com/mehran9675/touchup/internal/ui/store"
@@ -34,17 +35,17 @@ func NewStudio(s *store.Store, dragging func() bool, errs *components.ErrorDetai
 		video:     NewVideoStage(s, errs),
 		audio:     NewAudioStage(s, errs),
 		image:     NewImageStage(s),
-		browse:    theme.PrimaryButton("Choose a file", "folder-open").OnClick(s.OpenDialog),
-		open:      theme.SecondaryButton("Open", "folder-open").OnClick(s.OpenDialog),
+		browse:    theme.PrimaryButton(tr.T("Choose a file"), "folder-open").OnClick(s.OpenDialog),
+		open:      theme.SecondaryButton(tr.T("Open"), "folder-open").OnClick(s.OpenDialog),
 		// Closing waits for the frame to end: the inspector and stage are
 		// laid out after this button and still need the session.
-		close:    theme.GhostButton("Close", "x").OnClick(func() { s.App.Post(s.Close) }),
-		retry:    theme.SecondaryButton("Choose another file", "folder-open").OnClick(s.OpenDialog),
+		close:    theme.GhostButton(tr.T("Close"), "x").OnClick(func() { s.App.Post(s.Close) }),
+		retry:    theme.SecondaryButton(tr.T("Choose another file"), "folder-open").OnClick(s.OpenDialog),
 		dragging: dragging,
 	}
-	st.copyErr = theme.CopyButton("Copy", func() string {
+	st.copyErr = theme.CopyButton(tr.T("Copy"), func() string {
 		if sess := s.Session; sess != nil {
-			return s.ErrorReport(sess.Name+" can't be opened", sess.Err, "")
+			return s.ErrorReport(tr.T("{file} can't be opened", "file", sess.Name), sess.Err, "")
 		}
 		return ""
 	})
@@ -62,9 +63,9 @@ func (st *Studio) View() giode.Element {
 	var stage giode.Element
 	switch {
 	case sess.Loading:
-		stage = components.LoadingState("Reading " + sess.Name + "…")
+		stage = components.LoadingState(tr.T("Reading {file}…", "file", sess.Name))
 	case sess.Err != "":
-		stage = components.EmptyState("triangle-alert", "This file can't be opened", sess.Err, st.retry, st.copyErr)
+		stage = components.EmptyState("triangle-alert", tr.T("This file can't be opened"), sess.Err, st.retry, st.copyErr)
 	case sess.Kind == media.Video:
 		stage = st.video.View()
 	case sess.Kind == media.Audio:
@@ -131,7 +132,7 @@ func runningPreviewReport(s *store.Store) string {
 		return ""
 	}
 	p := &sess.Preview
-	return s.RunningReport("The preview of "+sess.Name, p.Update, p.Started, &p.Log)
+	return s.RunningReport(tr.T("The preview of {file}", "file", sess.Name), p.Update, p.Started, &p.Log)
 }
 
 // previewReport is the full report of the session's failed preview.
@@ -141,5 +142,5 @@ func previewReport(s *store.Store) string {
 		return ""
 	}
 	p := sess.Preview
-	return s.ErrorReport("The preview of "+sess.Name+" failed", p.Err, p.ErrLog)
+	return s.ErrorReport(tr.T("The preview of {file} failed", "file", sess.Name), p.Err, p.ErrLog)
 }

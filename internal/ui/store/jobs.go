@@ -11,6 +11,7 @@ import (
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/pipeline"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // JobStatus is where a job is in its life.
@@ -85,7 +86,7 @@ func (s *Store) Enqueue() {
 		Created: time.Now(), opts: opts,
 	}
 	s.Jobs = append(s.Jobs, job)
-	s.Toasts.ShowAction(giode.ToastInfo, "Added "+sess.Name+" to the queue", "View", func() {
+	s.Toasts.ShowAction(giode.ToastInfo, tr.T("Added {file} to the queue", "file", sess.Name), tr.T("View"), func() {
 		s.Navigate(PageQueue)
 	})
 	s.pump()
@@ -110,7 +111,7 @@ func (s *Store) pump() {
 func (s *Store) start(j *Job) {
 	ctx, cancel := context.WithCancel(context.Background())
 	j.Status, j.cancel, j.Started = JobRunning, cancel, time.Now()
-	j.Update = pipeline.Update{Stage: "Starting", Frac: 0}
+	j.Update = pipeline.Update{Stage: tr.T("Starting"), Frac: 0}
 	j.Log.reset()
 	j.Pace.reset()
 	report := func(u pipeline.Update) {
@@ -147,11 +148,11 @@ func (s *Store) start(j *Job) {
 				j.Status = JobCanceled
 			case err != nil:
 				j.Status, j.Err, j.ErrLog = JobFailed, err.Error(), engine.LogOf(err)
-				s.Toasts.Show(giode.ToastError, j.Name+" failed: "+err.Error())
+				s.Toasts.Show(giode.ToastError, tr.T("{file} failed: {reason}", "file", j.Name, "reason", err.Error()))
 			default:
 				j.Status = JobDone
 				j.Update.Frac = 1
-				s.Toasts.ShowAction(giode.ToastSuccess, filepath.Base(j.Output)+" is ready", "Show", func() {
+				s.Toasts.ShowAction(giode.ToastSuccess, tr.T("{file} is ready", "file", filepath.Base(j.Output)), tr.T("Show"), func() {
 					s.Reveal(j.Output)
 				})
 			}

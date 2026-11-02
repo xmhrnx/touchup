@@ -37,6 +37,12 @@ type Manifest struct {
 	// Batch means the command accepts folders for {input} and {output},
 	// which makes frame-by-frame video much faster.
 	Batch bool `json:"batch,omitempty"`
+	// Serve means the command can stay running between jobs, so models
+	// load once: started with TOUCHUP_SERVE=1 in its environment, it
+	// runs the job in its arguments, prints a line "TOUCHUP-SERVE-DONE
+	// <exit code>", then reads more jobs from standard input, a JSON
+	// array of arguments a line, until it closes. See serve.go.
+	Serve bool `json:"serve,omitempty"`
 
 	Install InstallSpec `json:"install"`
 	// Executable is the program to run, by GOOS ("linux", "windows",
@@ -145,6 +151,12 @@ type PipStep struct {
 	Args []string `json:"args"`
 	// IndexURL replaces PyPI for this step, by "goos" or "*".
 	IndexURL map[string]string `json:"indexURL,omitempty"`
+	// OS limits the step to these systems ("windows", "linux",
+	// "darwin"); empty means all.
+	OS []string `json:"os,omitempty"`
+	// Optional steps install extras the engine works without, such as a
+	// faster attention kernel: when one fails, the install goes on.
+	Optional bool `json:"optional,omitempty"`
 }
 
 // Source is an archive of an engine's code.

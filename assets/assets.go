@@ -1,4 +1,5 @@
-// Package assets embeds TouchUp's fonts, icons and app icon.
+// Package assets embeds TouchUp's fonts, icons, app icon and
+// translations.
 package assets
 
 import (
@@ -15,6 +16,12 @@ var Fonts embed.FS
 //
 //go:embed icons/*.svg
 var Icons embed.FS
+
+// Locales holds the translations, locales/<language>.json, keyed by
+// the English text (see internal/tr).
+//
+//go:embed locales/*.json
+var Locales embed.FS
 
 // AppIcon is the window and app icon.
 //

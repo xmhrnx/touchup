@@ -15,6 +15,7 @@ import (
 	"github.com/mehran9675/giode"
 	"github.com/mehran9675/giode/components/iconbutton"
 
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/draw"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
@@ -47,9 +48,9 @@ const (
 // NewCompareView creates an empty compare view.
 func NewCompareView() *CompareView {
 	c := &CompareView{split: 0.5, zoom: 1}
-	c.zoomIn = theme.IconButton("zoom-in", "Zoom in").OnClick(func() { c.zoomBy(1.5, c.center()) })
-	c.zoomOut = theme.IconButton("zoom-out", "Zoom out").OnClick(func() { c.zoomBy(1/1.5, c.center()) })
-	c.fit = theme.IconButton("maximize", "Fit").OnClick(func() { c.zoom, c.pan = 1, f32.Point{} })
+	c.zoomIn = theme.IconButton("zoom-in", tr.T("Zoom in")).OnClick(func() { c.zoomBy(1.5, c.center()) })
+	c.zoomOut = theme.IconButton("zoom-out", tr.T("Zoom out")).OnClick(func() { c.zoomBy(1/1.5, c.center()) })
+	c.fit = theme.IconButton("maximize", tr.T("Fit")).OnClick(func() { c.zoom, c.pan = 1, f32.Point{} })
 	return c
 }
 

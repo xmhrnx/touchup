@@ -2,11 +2,13 @@ package engine
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // download fetches url into file, reporting the fraction done when the
@@ -23,7 +25,7 @@ func download(ctx context.Context, url, file string, progress func(float64)) err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download failed: %s", resp.Status)
+		return errors.New(tr.T("download failed: {status}", "status", resp.Status))
 	}
 	out, err := os.Create(file)
 	if err != nil {

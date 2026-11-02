@@ -10,6 +10,7 @@ import (
 	"github.com/mehran9675/giode/styles/properties"
 
 	"github.com/mehran9675/touchup/assets"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/theme"
 )
 
@@ -29,7 +30,7 @@ func BrandMark() giode.Element {
 		AppIcon(30),
 		giode.Stack(giode.Styles{Gap: 0},
 			giode.Text("TouchUp", giode.Styles{FontFamily: theme.Sans, FontSize: 16.5, FontWeight: giode.FontWeightBold, Color: theme.Text}),
-			giode.Text("Local AI upscaling", theme.Caption().With(giode.Styles{FontSize: 11})),
+			giode.Text(tr.T("Local AI upscaling"), theme.Caption().With(giode.Styles{FontSize: 11})),
 		),
 	)
 }

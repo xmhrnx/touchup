@@ -9,6 +9,7 @@ import (
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/pipeline"
 	"github.com/mehran9675/touchup/internal/settings"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // Selection is the engine, model and size chosen for a kind of media,
@@ -69,9 +70,15 @@ func (sel Selection) Ready() bool {
 func (sel Selection) problem(kind media.Kind) error {
 	switch {
 	case sel.Engine == nil:
-		return errors.New("install an engine for " + kind.String() + " first")
+		switch kind {
+		case media.Image:
+			return errors.New(tr.T("install an engine for images first"))
+		case media.Video:
+			return errors.New(tr.T("install an engine for video first"))
+		}
+		return errors.New(tr.T("install an engine for audio first"))
 	case !sel.Ready():
-		return errors.New("install a model for " + sel.Engine.Name + " on the Engines page first")
+		return errors.New(tr.T("install a model for {engine} on the Engines page first", "engine", sel.Engine.Name))
 	}
 	return nil
 }
@@ -83,7 +90,7 @@ func (sel Selection) Label() string {
 	}
 	l := sel.Engine.Name
 	if sel.Model != nil {
-		l += " · " + sel.Model.Name
+		l += " · " + tr.T(sel.Model.Name)
 	}
 	if size := sel.SizeLabel(); size != "" {
 		l += " · " + size

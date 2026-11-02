@@ -15,6 +15,7 @@ import (
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/pipeline"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/components"
 	"github.com/mehran9675/touchup/internal/ui/format"
 	"github.com/mehran9675/touchup/internal/ui/store"
@@ -38,8 +39,8 @@ type Inspector struct {
 // NewInspector creates the inspector.
 func NewInspector(s *store.Store, options *components.EngineSettings) *Inspector {
 	in := &Inspector{s: s, options: options}
-	in.tune = theme.SecondaryButton("Find the fastest", "gauge").OnClick(s.RunTune)
-	in.adjust = theme.SecondaryButton("Adjust", "sliders-horizontal").OnClick(func() {
+	in.tune = theme.SecondaryButton(tr.T("Find the fastest"), "gauge").OnClick(s.RunTune)
+	in.adjust = theme.SecondaryButton(tr.T("Adjust"), "sliders-horizontal").OnClick(func() {
 		if sess := s.Session; sess != nil {
 			if sel := s.Selected(sess.Kind); sel.Engine != nil {
 				options.Show(sel.Engine)
@@ -47,12 +48,12 @@ func NewInspector(s *store.Store, options *components.EngineSettings) *Inspector
 		}
 	})
 	wide := giode.Styles{Width: -1, Padding: giode.SymmetricInset(16, 12)}
-	in.preview = giode.Button("Preview", theme.SecondaryStyle().With(wide)).OnClick(s.RunPreview).
+	in.preview = giode.Button(tr.T("Preview"), theme.SecondaryStyle().With(wide)).OnClick(s.RunPreview).
 		Icon(giode.Icon("scan-eye", giode.Styles{Width: 16, Height: 16}))
-	in.run = giode.Button("Upscale", theme.PrimaryStyle().With(wide)).OnClick(s.Enqueue).
+	in.run = giode.Button(tr.T("Upscale"), theme.PrimaryStyle().With(wide)).OnClick(s.Enqueue).
 		Icon(giode.Icon("sparkles", giode.Styles{Width: 16, Height: 16}))
-	in.browse = theme.SecondaryButton("Browse engines", "package").OnClick(func() { s.Navigate(store.PageEngines) })
-	in.models = theme.SecondaryButton("Get models", "download").OnClick(func() { s.Navigate(store.PageEngines) })
+	in.browse = theme.SecondaryButton(tr.T("Browse engines"), "package").OnClick(func() { s.Navigate(store.PageEngines) })
+	in.models = theme.SecondaryButton(tr.T("Get models"), "download").OnClick(func() { s.Navigate(store.PageEngines) })
 	in.scroll = giode.Scroll(in.content, giode.Styles{ScrollBar: giode.ScrollBar{Width: 4, ThumbColor: theme.Border}})
 	return in
 }
@@ -63,14 +64,14 @@ func (in *Inspector) View() giode.Element {
 	sel := in.s.Selected(sess.Kind)
 	canRun := sel.Ready() && !sess.Loading && sess.Err == ""
 
-	verb := map[media.Kind]string{media.Image: "Upscale image", media.Video: "Upscale video", media.Audio: "Enhance audio"}[sess.Kind]
+	verb := map[media.Kind]string{media.Image: tr.T("Upscale image"), media.Video: tr.T("Upscale video"), media.Audio: tr.T("Enhance audio")}[sess.Kind]
 	in.run.Label(verb).Disabled(!canRun)
 	actions := []giode.Element{}
 	switch sess.Kind {
 	case media.Video, media.Audio:
-		label := "Preview frame"
+		label := tr.T("Preview frame")
 		if sess.Kind == media.Audio {
-			label = "Preview section"
+			label = tr.T("Preview section")
 		}
 		in.preview.Label(label).Disabled(!canRun).Loading(sess.Preview.Running)
 		actions = append(actions, in.preview)
@@ -94,11 +95,11 @@ func (in *Inspector) footnote() string {
 	sess := in.s.Session
 	switch sess.Kind {
 	case media.Video:
-		return "Preview upscales only the frame under the playhead."
+		return tr.T("Preview upscales only the frame under the playhead.")
 	case media.Audio:
-		return "Preview enhances only the highlighted section."
+		return tr.T("Preview enhances only the highlighted section.")
 	}
-	return "Images go straight to the queue: no preview needed."
+	return tr.T("Images go straight to the queue: no preview needed.")
 }
 
 func (in *Inspector) content() giode.Element {
@@ -111,7 +112,7 @@ func (in *Inspector) content() giode.Element {
 	sections := []giode.Element{}
 
 	// Engines.
-	rows := []giode.Element{components.SectionLabel("Engine")}
+	rows := []giode.Element{components.SectionLabel(tr.T("Engine"))}
 	installedAny := false
 	for _, m := range engines {
 		installed := s.Installed(m.ID)
@@ -119,7 +120,7 @@ func (in *Inspector) content() giode.Element {
 		selected := sel.Engine != nil && sel.Engine.ID == m.ID
 		note := ""
 		if installed && len(m.Models) > 0 && s.InstalledModels(m) == 0 {
-			note = "No model installed yet"
+			note = tr.T("No model installed yet")
 		}
 		rows = append(rows, components.EngineOption(m, selected, installed, note, func() {
 			if installed {
@@ -130,22 +131,20 @@ func (in *Inspector) content() giode.Element {
 		}))
 	}
 	if !installedAny {
-		rows = append(rows, components.Banner("info", theme.Info, "No engine installed yet",
-			"Install one from the Engines page to start upscaling "+kindNoun(kind)+"."), in.browse)
+		rows = append(rows, components.Banner("info", theme.Info, tr.T("No engine installed yet"), noEngineHint(kind)), in.browse)
 	}
 	sections = append(sections, giode.Stack(giode.Styles{Gap: 8, Width: -1}, rows...))
 
 	if sel.Engine != nil && !sel.Ready() {
 		sections = append(sections, giode.Stack(giode.Styles{Gap: 8, Width: -1},
-			components.Banner("download", theme.Info, "Choose a model to download",
-				sel.Engine.Name+" is installed, but its models are separate downloads. Pick one on the Engines page."),
+			components.Banner("download", theme.Info, tr.T("Choose a model to download"),
+				tr.T("{engine} is installed, but its models are separate downloads. Pick one on the Engines page.", "engine", sel.Engine.Name)),
 			in.models))
 	}
 	if sel.Ready() && sess.Kind == media.Video && slices.Contains(sel.Engine.Tags, "Diffusion") && sess.Info.Frames > longVideoFrames {
-		sections = append(sections, components.Banner("timer", theme.Warning, "This will take a long time",
-			fmt.Sprintf("%s takes a few seconds per frame, and this video has %s frames: %s on a mid-range GPU. "+
-				"Use Find the fastest below to tune it for this GPU first.",
-				sel.Engine.Name, format.Count(sess.Info.Frames), diffusionTime(sess.Info.Frames))))
+		sections = append(sections, components.Banner("timer", theme.Warning, tr.T("This will take a long time"),
+			tr.T("{engine} takes a few seconds per frame, and this video has {frames} frames: {time} on a mid-range GPU. Use Find the fastest below to tune it for this GPU first.",
+				"engine", sel.Engine.Name, "frames", format.Count(sess.Info.Frames), "time", diffusionTime(sess.Info.Frames))))
 	}
 	if sel.Ready() {
 		// Models: the installed ones.
@@ -158,12 +157,12 @@ func (in *Inspector) content() giode.Element {
 		if len(available) > 1 {
 			pills := []giode.Element{}
 			for _, mdl := range available {
-				pills = append(pills, components.Pill("model:"+sel.Engine.ID, mdl.ID, mdl.Name,
+				pills = append(pills, components.Pill("model:"+sel.Engine.ID, mdl.ID, tr.T(mdl.Name),
 					sel.Model != nil && sel.Model.ID == mdl.ID, func() { s.Choose(kind, "", mdl.ID, 0) }))
 			}
-			group := []giode.Element{components.SectionLabel("Model"), giode.Row(giode.Styles{Gap: 8}, pills...)}
+			group := []giode.Element{components.SectionLabel(tr.T("Model")), giode.Row(giode.Styles{Gap: 8}, pills...)}
 			if sel.Model != nil && sel.Model.Description != "" {
-				group = append(group, giode.Text(sel.Model.Description, theme.Caption()))
+				group = append(group, giode.Text(tr.T(sel.Model.Description), theme.Caption()))
 			}
 			sections = append(sections, giode.Stack(giode.Styles{Gap: 10, Width: -1}, group...))
 		}
@@ -174,7 +173,7 @@ func (in *Inspector) content() giode.Element {
 				pills = append(pills, components.Pill("scale:"+sel.Engine.ID, sc, fmt.Sprintf("%dx", sc),
 					sel.Target == 0 && sel.Scale == sc, func() { s.Choose(kind, "", "", sc) }))
 			}
-			group := []giode.Element{components.SectionLabel("Size"), giode.Row(giode.Styles{Gap: 8}, pills...)}
+			group := []giode.Element{components.SectionLabel(tr.T("Size")), giode.Row(giode.Styles{Gap: 8}, pills...)}
 			if kind != media.Audio {
 				if targets := sel.Targets(sess.Info.Width, sess.Info.Height); len(targets) > 0 {
 					res := []giode.Element{}
@@ -202,15 +201,15 @@ func (in *Inspector) engineSettings(m *engine.Manifest) giode.Element {
 	var changed []string
 	for i := range m.Options {
 		if o := &m.Options[i]; values[o.ID] != o.Default {
-			changed = append(changed, o.Name+": "+o.Label(values[o.ID]))
+			changed = append(changed, tr.T(o.Name)+": "+components.OptionLabel(o, values[o.ID]))
 		}
 	}
-	summary := "Defaults, tuned for most GPUs"
+	summary := tr.T("Defaults, tuned for most GPUs")
 	if len(changed) > 0 {
 		summary = strings.Join(changed, " · ")
 	}
 	group := []giode.Element{
-		components.SectionLabel("Engine settings"),
+		components.SectionLabel(tr.T("Engine settings")),
 		giode.Row(giode.Styles{Width: -1, Gap: 12, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap},
 			giode.Box(giode.Styles{FlexGrow: 1}, giode.Text(summary, theme.Caption().With(giode.Styles{MaxLines: 3, TextOverflow: giode.TextOverflowEllipsis}))),
 			in.adjust,
@@ -218,13 +217,13 @@ func (in *Inspector) engineSettings(m *engine.Manifest) giode.Element {
 	}
 	if m.Tune != nil && in.s.Session.Kind == media.Video {
 		in.tune.Disabled(!in.s.CanTune())
+		// Text first and the button under it: translations run long.
 		group = append(group,
-			giode.Row(giode.Styles{Width: -1, Gap: 12, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap},
-				giode.Box(giode.Styles{FlexGrow: 1}, giode.Text(
-					fmt.Sprintf("Time the settings on %g seconds of this video and keep the fastest. Each try takes about as long as upscaling that clip.", m.Tune.Seconds),
-					theme.Caption())),
-				in.tune,
-			))
+			giode.Text(
+				tr.T("Time the settings on {seconds} seconds of this video and keep the fastest. Each try takes about as long as upscaling that clip.", "seconds", tr.Decimal(m.Tune.Seconds, 0)),
+				theme.Caption()),
+			in.tune,
+		)
 	}
 	return giode.Stack(giode.Styles{Gap: 10, Width: -1}, group...)
 }
@@ -239,9 +238,9 @@ const longVideoFrames = 2000
 func diffusionTime(frames int) string {
 	hours := float64(frames) * 2.5 / 3600
 	if hours < 2 {
-		return "over an hour"
+		return tr.T("over an hour")
 	}
-	return fmt.Sprintf("about %d hours", int(math.Round(hours)))
+	return tr.N("about {count} hours", int(math.Round(hours)))
 }
 
 // output summarizes the file the upscale will write.
@@ -250,7 +249,7 @@ func (in *Inspector) output(sel store.Selection) giode.Element {
 	sess := s.Session
 	info := sess.Info
 	st := s.Settings
-	rows := []giode.Element{components.SectionLabel("Output")}
+	rows := []giode.Element{components.SectionLabel(tr.T("Output"))}
 	line := func(label, value string) giode.Element {
 		return giode.Row(giode.Styles{Width: -1, Wrap: giode.WrapNoWrap, Gap: 12},
 			giode.Box(giode.Styles{FlexGrow: 1}, giode.Text(label, theme.Secondary())),
@@ -261,40 +260,41 @@ func (in *Inspector) output(sel store.Selection) giode.Element {
 	case media.Image, media.Video:
 		if info.Width > 0 {
 			sz := sel.Size(info.Width, info.Height)
-			rows = append(rows, line("Size", format.Resolution(sz.Width, sz.Height)))
+			rows = append(rows, line(tr.T("Size"), format.Resolution(sz.Width, sz.Height)))
 			if sz.Exact && sz.Scale > 1 && !sel.Engine.TakesResolution() {
-				rows = append(rows, line("Engine runs at", fmt.Sprintf("%dx, then resized", sz.Scale)))
+				rows = append(rows, line(tr.T("Engine runs at"), tr.T("{scale}x, then resized", "scale", sz.Scale)))
 			}
 		}
 		if sess.Kind == media.Image {
-			rows = append(rows, line("Format", strings.ToUpper(st.ImageFormat)))
+			rows = append(rows, line(tr.T("Format"), strings.ToUpper(st.ImageFormat)))
 		} else {
 			codec := map[string]string{"h264": "H.264", "h265": "H.265", "prores": "ProRes 422 HQ"}[st.VideoCodec]
-			rows = append(rows, line("Format", codec), line("Frames", fmt.Sprint(info.Frames)))
+			rows = append(rows, line(tr.T("Format"), codec), line(tr.T("Frames"), format.Count(info.Frames)))
 			if info.HasAudio {
-				rows = append(rows, line("Audio", "Copied from the original"))
+				rows = append(rows, line(tr.T("Audio"), tr.T("Copied from the original")))
 			}
 		}
 	case media.Audio:
-		rows = append(rows, line("Format", strings.ToUpper(st.AudioFormat)))
+		rows = append(rows, line(tr.T("Format"), strings.ToUpper(st.AudioFormat)))
 		if info.SampleRate > 0 {
-			rows = append(rows, line("Source", format.Rate(info.SampleRate)+" · "+format.Channels(info.Channels)))
+			rows = append(rows, line(tr.T("Source"), format.Rate(info.SampleRate)+" · "+format.Channels(info.Channels)))
 		}
 	}
-	dest := "Next to the original"
+	dest := tr.T("Next to the original")
 	if st.OutputDir != "" {
 		dest = filepath.Base(st.OutputDir)
 	}
-	rows = append(rows, line("Saved to", dest))
+	rows = append(rows, line(tr.T("Saved to"), dest))
 	return giode.Stack(giode.Styles{Gap: 10, Width: -1}, rows...)
 }
 
-func kindNoun(k media.Kind) string {
+// noEngineHint says where to get an engine for kind.
+func noEngineHint(k media.Kind) string {
 	switch k {
 	case media.Image:
-		return "images"
+		return tr.T("Install one from the Engines page to start upscaling images.")
 	case media.Video:
-		return "videos"
+		return tr.T("Install one from the Engines page to start upscaling videos.")
 	}
-	return "audio"
+	return tr.T("Install one from the Engines page to start enhancing audio.")
 }

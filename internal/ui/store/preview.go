@@ -9,6 +9,7 @@ import (
 
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/pipeline"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // RunPreview upscales the selected video frame or audio section.
@@ -26,7 +27,7 @@ func (s *Store) RunPreview() {
 	ctx, cancel := context.WithCancel(sess.ctx)
 	p := &sess.Preview
 	p.Running, p.Err, p.ErrLog, p.cancel = true, "", "", cancel
-	p.Update, p.Started = pipeline.Update{Stage: "Starting", Frac: 0}, time.Now()
+	p.Update, p.Started = pipeline.Update{Stage: tr.T("Starting"), Frac: 0}, time.Now()
 	p.Log.reset()
 	p.Pace.reset()
 	report := func(u pipeline.Update) {

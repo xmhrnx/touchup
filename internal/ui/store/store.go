@@ -9,6 +9,7 @@ import (
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/settings"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // Page is a top-level screen.
@@ -67,7 +68,7 @@ func New(toasts *giode.ToasterElement) *Store {
 	s.locateTools()
 	s.refreshInstalled()
 	for _, err := range errs {
-		toasts.Show(giode.ToastWarning, "Skipped an engine manifest: "+err.Error())
+		toasts.Show(giode.ToastWarning, tr.T("Skipped an engine manifest: {reason}", "reason", err.Error()))
 	}
 	return s
 }

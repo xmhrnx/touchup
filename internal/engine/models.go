@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // ModelsDir is where an engine's downloaded weights live.
@@ -64,7 +67,7 @@ func InstallModel(ctx context.Context, m *Manifest, mdl *Model, report Report) e
 			report(Status{Stage: stage, Frac: frac})
 		})
 		if err == nil && f.SHA256 != "" {
-			report(Status{Stage: "Verifying", Frac: -1})
+			report(Status{Stage: tr.T("Verifying"), Frac: -1})
 			err = verify(part, f.SHA256)
 		}
 		if err != nil {
@@ -117,7 +120,7 @@ func verify(file, want string) error {
 		return err
 	}
 	if got := hex.EncodeToString(h.Sum(nil)); got != want {
-		return fmt.Errorf("the download is corrupt (checksum %s…, expected %s…)", got[:12], want[:12])
+		return errors.New(tr.T("the download is corrupt (checksum {got}…, expected {want}…)", "got", got[:12], "want", want[:12]))
 	}
 	return nil
 }

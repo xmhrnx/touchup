@@ -11,7 +11,9 @@ import (
 
 // ErrorReport is the whole of an error as plain text to copy into a bug
 // report: what failed, why, the computer and setup it ran on, and
-// everything the engine or installer printed that TouchUp kept.
+// everything the engine or installer printed that TouchUp kept. The
+// title and summary are in the user's language; the rest stays in
+// English, for whoever reads the report.
 func (s *Store) ErrorReport(title, summary, log string) string {
 	var b strings.Builder
 	b.WriteString(title + "\n")

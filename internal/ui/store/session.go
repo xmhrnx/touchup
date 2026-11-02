@@ -12,6 +12,7 @@ import (
 
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/pipeline"
+	"github.com/mehran9675/touchup/internal/tr"
 )
 
 // Session is the file open in the studio.
@@ -84,7 +85,7 @@ func (s *Store) OpenDialog() {
 		f.Close()
 		named, ok := f.(interface{ Name() string })
 		if !ok {
-			s.fail(errors.New("this file can't be opened from its location"))
+			s.fail(errors.New(tr.T("this file can't be opened from its location")))
 			return
 		}
 		path := named.Name()
@@ -96,11 +97,11 @@ func (s *Store) OpenDialog() {
 func (s *Store) Open(path string) {
 	kind := media.Detect(path)
 	if kind == media.Unknown {
-		s.Toasts.Show(giode.ToastWarning, "TouchUp opens images, videos and audio files")
+		s.Toasts.Show(giode.ToastWarning, tr.T("TouchUp opens images, videos and audio files"))
 		return
 	}
 	if fi, err := os.Stat(path); err != nil || fi.IsDir() {
-		s.Toasts.Show(giode.ToastWarning, "That file can't be read")
+		s.Toasts.Show(giode.ToastWarning, tr.T("That file can't be read"))
 		return
 	}
 	s.Close()
@@ -154,7 +155,7 @@ func (s *Store) load(sess *Session) {
 		})
 	case media.Video:
 		if info.Width == 0 {
-			s.post(func() { sess.Loading, sess.Err = false, "This file has no video stream" })
+			s.post(func() { sess.Loading, sess.Err = false, tr.T("This file has no video stream") })
 			return
 		}
 		at := min(info.Duration*0.2, 5)
@@ -171,7 +172,7 @@ func (s *Store) load(sess *Session) {
 		s.post(func() { sess.Film = film })
 	case media.Audio:
 		if !info.HasAudio {
-			s.post(func() { sess.Loading, sess.Err = false, "This file has no audio stream" })
+			s.post(func() { sess.Loading, sess.Err = false, tr.T("This file has no audio stream") })
 			return
 		}
 		peaks, err := s.Tools.Waveform(ctx, sess.Path, 1400)

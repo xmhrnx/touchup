@@ -9,9 +9,13 @@ import (
 	"os"
 
 	"github.com/mehran9675/giode"
+	"github.com/mehran9675/giode/i18n"
 
 	"github.com/mehran9675/touchup/assets"
+	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/pipeline"
+	"github.com/mehran9675/touchup/internal/settings"
+	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/shell"
 	"github.com/mehran9675/touchup/internal/ui/store"
 	"github.com/mehran9675/touchup/internal/ui/theme"
@@ -25,6 +29,14 @@ func main() {
 		log.Fatal(err)
 	}
 	pipeline.ClearWork()
+
+	// Translations first: the store can show messages as it starts.
+	intl := &giode.IntlOptions{FS: assets.Locales, Dir: "locales", Fallback: "en"}
+	if err := i18n.Load(intl.FS, intl.Dir); err != nil {
+		log.Print(err)
+	}
+	i18n.SetFallback(intl.Fallback)
+	tr.Use(settings.Load().Language)
 
 	toasts := giode.Toaster().Placement(giode.ToastBottomRight).Max(4)
 	s := store.New(toasts)
@@ -43,6 +55,8 @@ func main() {
 		Center:     true,
 		Background: theme.Background,
 		Icon:       assets.AppIcon,
+		Locale:     tr.Resolve(s.Settings.Language),
+		Intl:       intl,
 		OnFileDrop: func(paths []string) {
 			if len(paths) > 0 {
 				s.Open(paths[0])
@@ -64,7 +78,10 @@ func main() {
 			}
 		},
 		OnBeforeClose: s.Shutdown,
-		OnShutdown:    pipeline.ClearWork,
+		OnShutdown: func() {
+			engine.StopServers() // they'd hold the GPU and the work folder
+			pipeline.ClearWork()
+		},
 	})
 	s.Attach(app)
 	if len(os.Args) > 1 {
@@ -75,13 +92,15 @@ func main() {
 		_, on := app.FileDrag()
 		return on
 	}
-	// Components resolve some colors when they're built, so the UI is
-	// rebuilt when the color mode changes. Its state lives in the store.
+	// Components resolve some colors and labels when they're built, so
+	// the UI is rebuilt when the color mode or the language changes. Its
+	// state lives in the store.
 	var root *shell.Shell
-	var built giode.Mode
+	var builtMode giode.Mode
+	var builtLocale string
 	if err := app.Run(func() giode.Element {
-		if root == nil || giode.CurrentMode() != built {
-			root, built = shell.New(s, dragging), giode.CurrentMode()
+		if root == nil || giode.CurrentMode() != builtMode || i18n.Locale() != builtLocale {
+			root, builtMode, builtLocale = shell.New(s, dragging), giode.CurrentMode(), i18n.Locale()
 		}
 		return root.View()
 	}); err != nil {
