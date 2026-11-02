@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/mehran9675/touchup/internal/proc"
@@ -42,6 +43,9 @@ func installPip(ctx context.Context, m *Manifest, python string, report Report) 
 	if len(m.Install.Packages) > 0 {
 		steps = append([]PipStep{{Args: m.Install.Packages}}, steps...)
 	}
+	steps = slices.DeleteFunc(slices.Clone(steps), func(st PipStep) bool {
+		return len(st.OS) > 0 && !slices.Contains(st.OS, runtime.GOOS)
+	})
 	for i, step := range steps {
 		stage := tr.T("Installing packages")
 		if len(steps) > 1 {
@@ -55,6 +59,10 @@ func installPip(ctx context.Context, m *Manifest, python string, report Report) 
 			args = append(args, strings.ReplaceAll(a, "{engineDir}", m.Dir()))
 		}
 		if err := runLogged(ctx, report, stage, vpy, args...); err != nil {
+			if step.Optional && ctx.Err() == nil {
+				report(Status{Stage: stage, Frac: -1, Line: tr.T("Skipped an optional package that didn't install: {reason}", "reason", err.Error())})
+				continue
+			}
 			return err
 		}
 	}

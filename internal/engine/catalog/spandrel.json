@@ -3,7 +3,7 @@
   "name": "PyTorch SR",
   "featured": true,
   "vendor": "spandrel · community models",
-  "description": "Runs the strongest community image models (DRCT, DAT, ATD, RealPLKSR, SwinIR, Real-ESRGAN) on your GPU. Install only the models you want.",
+  "description": "Fast restoration models (DAT, DRCT, RealPLKSR, SwinIR, Real-ESRGAN) that clean up blur, noise and compression and sharpen what's in the picture, in seconds. They don't invent new detail; SeedVR2 and FlashVSR do.",
   "homepage": "https://github.com/chaiNNer-org/spandrel",
   "license": "MIT · models vary",
   "tags": ["Transformer", "GAN", "Photo", "Anime", "PyTorch"],
@@ -42,8 +42,8 @@
   "models": [
     {
       "id": "nomos2-drct-l",
-      "name": "DRCT-L · Best detail",
-      "description": "The highest-quality model here: a large transformer for photos with light blur, noise or compression. Slow.",
+      "name": "DRCT-L · Clean sources",
+      "description": "The most detail from clean, sharp sources. It sharpens JPEG blocks and noise along with everything else, so pick another model for compressed photos and video. Slow.",
       "size": "243 MB",
       "scales": [2, 3, 4],
       "files": [
@@ -52,8 +52,7 @@
           "name": "4xNomos2_hq_drct-l.pth",
           "sha256": "9f10855fb26dfc2e1c475188d0f16e4692e2e7ca792d46ddf39d75b6ed2326dd"
         }
-      ],
-      "recommended": true
+      ]
     },
     {
       "id": "nomos8k-dat",
@@ -71,8 +70,8 @@
     },
     {
       "id": "nomos2-atd",
-      "name": "ATD · Photos, balanced",
-      "description": "Close to DRCT quality at about half the size.",
+      "name": "ATD · Clean sources",
+      "description": "Close to DRCT on clean sources at half the size. Like it, it sharpens compression artifacts.",
       "size": "82 MB",
       "scales": [2, 3, 4],
       "files": [
@@ -85,8 +84,8 @@
     },
     {
       "id": "realwebphoto-dat2",
-      "name": "DAT2 · Web and social photos",
-      "description": "For photos that were downscaled and recompressed by websites and messengers.",
+      "name": "DAT2 · Real photos",
+      "description": "The best all-round choice for real photos and video: trained on blur, noise and JPEG and WebP compression, so it cleans them up while restoring detail.",
       "size": "140 MB",
       "scales": [2, 3, 4],
       "files": [
@@ -95,12 +94,13 @@
           "name": "4xRealWebPhoto_v4_dat2.pth",
           "sha256": "9b82f8f60826e59b9d2e56a6e6ad9a842b84d57a9ec5ed7377bf120032b2c4c9"
         }
-      ]
+      ],
+      "recommended": true
     },
     {
       "id": "nomos2-realplksr",
-      "name": "RealPLKSR · Fast photos",
-      "description": "Quick with good quality: the best choice for long videos.",
+      "name": "RealPLKSR · Fast, clean sources",
+      "description": "Quick, for sources without heavy compression.",
       "size": "30 MB",
       "scales": [2, 3, 4],
       "files": [
@@ -109,13 +109,12 @@
           "name": "4xNomos2_realplksr_dysample.pth",
           "sha256": "96c8476ed2c42107628d10562b32ae89e7be3c2f7a53d29504823e9bafe8121d"
         }
-      ],
-      "recommended": true
+      ]
     },
     {
       "id": "webphoto-realplksr",
-      "name": "RealPLKSR · Fast web photos",
-      "description": "The fast model for compressed photos and video.",
+      "name": "RealPLKSR · Fast, real photos",
+      "description": "Fast and robust: trained on noise, blur and compression. The best choice for long videos.",
       "size": "30 MB",
       "scales": [2, 3, 4],
       "files": [
@@ -124,7 +123,8 @@
           "name": "4xNomosWebPhoto_RealPLKSR.pth",
           "sha256": "a9db66c9b674c6a5025b6ef3bee71a57c33b8605d8a2de0980470f89002efbbe"
         }
-      ]
+      ],
+      "recommended": true
     },
     {
       "id": "swinir-l-real",
@@ -143,7 +143,7 @@
     {
       "id": "realesrgan-x4plus",
       "name": "Real-ESRGAN x4plus",
-      "description": "The classic all-rounder: strong cleanup of blur, noise and JPEG artifacts.",
+      "description": "The classic all-rounder, and the most robust on tiny or heavily compressed sources.",
       "size": "67 MB",
       "scales": [2, 3, 4],
       "files": [

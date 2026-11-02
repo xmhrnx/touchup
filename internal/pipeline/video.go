@@ -50,24 +50,13 @@ func frameVideo(ctx context.Context, o Options, ws *workspace, in, out string, i
 
 	if o.Engine.Batch {
 		// One run over the folder; follow progress by counting results.
-		stop := make(chan struct{})
-		go func() {
-			t := time.NewTicker(400 * time.Millisecond)
-			defer t.Stop()
-			for {
-				select {
-				case <-stop:
-					return
-				case <-t.C:
-					done, _ := filepath.Glob(filepath.Join(ws.out, "*"+o.Engine.OutputExt))
-					report(Update{Stage: stage, Frac: from + (to-from)*float64(len(done))/total})
-				}
-			}
-		}()
+		stop := watchFolder(ws.out, o.Engine.OutputExt, len(frames), func(f float64) {
+			report(Update{Stage: stage, Frac: from + (to-from)*f})
+		})
 		j := o.sized(o.job(ws.in, ws.out, ws.in, ws.out, report, stage, from, to), info.Width, info.Height)
 		j.Progress = nil // per-frame percentages would jump around
 		_, err := o.Engine.Run(ctx, j)
-		close(stop)
+		stop()
 		if err != nil {
 			return err
 		}
@@ -136,4 +125,25 @@ func wholeVideo(ctx context.Context, o Options, ws *workspace, in, out string, i
 		}
 	}
 	return o.Tools.Remux(ctx, result, in, out)
+}
+
+// watchFolder reports the share of total files with extension ext that
+// have appeared in dir, until the returned stop is called: progress for
+// engines given a folder, whose own counts restart with every file.
+func watchFolder(dir, ext string, total int, progress func(float64)) (stop func()) {
+	done := make(chan struct{})
+	go func() {
+		t := time.NewTicker(400 * time.Millisecond)
+		defer t.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-t.C:
+				found, _ := filepath.Glob(filepath.Join(dir, "*"+ext))
+				progress(float64(len(found)) / float64(max(1, total)))
+			}
+		}
+	}()
+	return func() { close(done) }
 }

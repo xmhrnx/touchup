@@ -1,0 +1,196 @@
+{
+  "id": "flashvsr",
+  "name": "FlashVSR",
+  "featured": true,
+  "vendor": "OpenImagingLab · lihaoyun6",
+  "description": "One-step diffusion video upscaler that streams through a video, building real detail like SeedVR2 at several times its speed. The fast choice for long videos.",
+  "homepage": "https://github.com/OpenImagingLab/FlashVSR",
+  "license": "Apache-2.0 · GPL-3.0 runner",
+  "tags": ["Diffusion", "Transformer", "PyTorch"],
+  "requirements": "Python 3.10–3.13 · NVIDIA GPU (RTX 20 or newer) with 8 GB+",
+  "media": ["video"],
+  "input": "image",
+  "batch": true,
+  "serve": true,
+  "install": {
+    "type": "pip",
+    "size": "≈ 3 GB with PyTorch, plus models",
+    "source": {"url": "https://github.com/lihaoyun6/ComfyUI-FlashVSR_Ultra_Fast/archive/4820b3f02347bddcbbb9a5a85ab7638fe976366e.zip", "dir": "flashvsr"},
+    "pip": [
+      {
+        "args": ["torch>=2.7", "torchvision"],
+        "indexURL": {"windows": "https://download.pytorch.org/whl/cu128"}
+      },
+      {"args": ["einops", "safetensors", "numpy", "pillow", "tqdm"]},
+      {"args": ["triton-windows>=3.3,<3.7"], "os": ["windows"]}
+    ],
+    "scripts": ["flashvsr_runner.py"]
+  },
+  "executable": {"*": "python"},
+  "args": [
+    "{engineDir}/flashvsr_runner.py",
+    "--code",
+    "{engineDir}/flashvsr",
+    "--models",
+    "{modelDir}",
+    "--input",
+    "{input}",
+    "--output",
+    "{output}",
+    "--scale",
+    "{scale}",
+    "{modelArgs}"
+  ],
+  "gpuArgs": ["--gpu", "{gpu}"],
+  "outputExt": ".png",
+  "scales": [2, 4],
+  "defaultScale": 2,
+  "models": [
+    {
+      "id": "v11-tiny",
+      "name": "v1.1 · Fast decoder",
+      "description": "FlashVSR's own small decoder: the fastest, and light on memory.",
+      "size": "≈ 3 GB",
+      "args": ["--mode", "tiny"],
+      "files": [
+        {
+          "url": "https://huggingface.co/JunhaoZhuang/FlashVSR-v1.1/resolve/main/diffusion_pytorch_model_streaming_dmd.safetensors",
+          "name": "diffusion_pytorch_model_streaming_dmd.safetensors"
+        },
+        {
+          "url": "https://huggingface.co/JunhaoZhuang/FlashVSR-v1.1/resolve/main/LQ_proj_in.ckpt",
+          "name": "LQ_proj_in.ckpt"
+        },
+        {
+          "url": "https://huggingface.co/JunhaoZhuang/FlashVSR-v1.1/resolve/main/TCDecoder.ckpt",
+          "name": "TCDecoder.ckpt"
+        }
+      ],
+      "recommended": true
+    },
+    {
+      "id": "v11-full",
+      "name": "v1.1 · Full decoder",
+      "description": "Decodes with the Wan 2.1 VAE: a little cleaner, slower, and needs more memory.",
+      "size": "≈ 3.5 GB",
+      "args": ["--mode", "full"],
+      "files": [
+        {
+          "url": "https://huggingface.co/JunhaoZhuang/FlashVSR-v1.1/resolve/main/diffusion_pytorch_model_streaming_dmd.safetensors",
+          "name": "diffusion_pytorch_model_streaming_dmd.safetensors"
+        },
+        {
+          "url": "https://huggingface.co/JunhaoZhuang/FlashVSR-v1.1/resolve/main/LQ_proj_in.ckpt",
+          "name": "LQ_proj_in.ckpt"
+        },
+        {
+          "url": "https://huggingface.co/JunhaoZhuang/FlashVSR-v1.1/resolve/main/Wan2.1_VAE.pth",
+          "name": "Wan2.1_VAE.pth"
+        }
+      ]
+    }
+  ],
+  "options": [
+    {
+      "id": "tile",
+      "name": "Tile size",
+      "type": "choice",
+      "default": "256",
+      "description": "Frames are upscaled in overlapping tiles of this size, measured on the original. Bigger tiles are faster but need more GPU memory; 256 suits 8–12 GB cards.",
+      "choices": [
+        {"value": "192", "label": "192 px"},
+        {"value": "256", "label": "256 px"},
+        {"value": "384", "label": "384 px"},
+        {"value": "512", "label": "512 px"},
+        {"value": "0", "label": "Whole picture"}
+      ],
+      "args": ["--tile", "{value}"]
+    },
+    {
+      "id": "tileOverlap",
+      "name": "Tile overlap",
+      "type": "choice",
+      "default": "24",
+      "description": "Pixels tiles share and blend. Less is faster; too little can show seams.",
+      "choices": [
+        {"value": "16", "label": "16 px"},
+        {"value": "24", "label": "24 px"},
+        {"value": "32", "label": "32 px"}
+      ],
+      "args": ["--tile-overlap", "{value}"]
+    },
+    {
+      "id": "chunk",
+      "name": "Frames in memory",
+      "type": "choice",
+      "default": "64",
+      "description": "How many frames are upscaled at a time. Each part starts with a few frames of the one before, so motion carries over. More uses more system memory.",
+      "choices": [
+        {"value": "32", "label": "32"},
+        {"value": "64", "label": "64"},
+        {"value": "128", "label": "128"}
+      ],
+      "args": ["--chunk", "{value}"]
+    },
+    {
+      "id": "sparse",
+      "name": "Attention",
+      "type": "choice",
+      "default": "2.0",
+      "description": "How much of each frame the model looks at. Less is faster; more is steadier.",
+      "choices": [
+        {"value": "1.5", "label": "Faster"},
+        {"value": "2.0", "label": "Steadier"}
+      ],
+      "args": ["--sparse-ratio", "{value}"]
+    },
+    {
+      "id": "localRange",
+      "name": "Detail",
+      "type": "choice",
+      "default": "11",
+      "description": "Sharper detail can flicker a little more from frame to frame.",
+      "choices": [
+        {"value": "9", "label": "Sharper"},
+        {"value": "11", "label": "Steadier"}
+      ],
+      "args": ["--local-range", "{value}"]
+    },
+    {
+      "id": "precision",
+      "name": "Precision",
+      "type": "choice",
+      "default": "bf16",
+      "description": "bfloat16 suits RTX 30 cards and newer; use half precision on RTX 20 cards.",
+      "choices": [
+        {"value": "bf16", "label": "bfloat16"},
+        {"value": "fp16", "label": "Half"}
+      ],
+      "args": ["--precision", "{value}"]
+    },
+    {
+      "id": "tiledVae",
+      "name": "Decode in tiles",
+      "type": "toggle",
+      "default": "true",
+      "description": "With the full decoder, decode in tiles to use less GPU memory, at a cost in speed.",
+      "args": ["--tiled-vae"]
+    },
+    {
+      "id": "unloadDit",
+      "name": "Free memory for decoding",
+      "type": "toggle",
+      "default": "false",
+      "description": "Move the model off the GPU while frames are decoded, for GPUs that run out of memory there. Slower.",
+      "args": ["--unload-dit"]
+    },
+    {
+      "id": "colorFix",
+      "name": "Keep the original colors",
+      "type": "toggle",
+      "default": "true",
+      "description": "Match the result's colors to the original's.",
+      "argsOff": ["--no-color-fix"]
+    }
+  ]
+}

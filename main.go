@@ -12,6 +12,7 @@ import (
 	"github.com/mehran9675/giode/i18n"
 
 	"github.com/mehran9675/touchup/assets"
+	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/pipeline"
 	"github.com/mehran9675/touchup/internal/settings"
 	"github.com/mehran9675/touchup/internal/tr"
@@ -77,7 +78,10 @@ func main() {
 			}
 		},
 		OnBeforeClose: s.Shutdown,
-		OnShutdown:    pipeline.ClearWork,
+		OnShutdown: func() {
+			engine.StopServers() // they'd hold the GPU and the work folder
+			pipeline.ClearWork()
+		},
 	})
 	s.Attach(app)
 	if len(os.Args) > 1 {

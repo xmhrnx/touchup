@@ -314,3 +314,53 @@ ffmpeg -loglevel error -y -i "$1" -vf "scale=iw*$3:ih*$3:flags=bicubic" "$2"`+"\
 		t.Errorf("joined parts differ from the whole by %.2f on average", mean)
 	}
 }
+
+func TestTiledPictureBatch(t *testing.T) {
+	tools := setup(t)
+	runs := filepath.Join(t.TempDir(), "runs.txt")
+	// A batch engine, like SeedVR2 given a folder: it starts once and
+	// writes each part under the part's own name.
+	exe := script(t, `echo run >> "`+runs+`"
+for f in "$1"/*.png; do
+  ffmpeg -loglevel error -y -i "$f" -vf "scale=iw*$3:ih*$3:flags=bicubic" "$2/$(basename "$f")"
+done
+`)
+	m := &engine.Manifest{
+		ID: "parts", Name: "Parts", Media: []string{"image"}, Input: "image", Scales: []int{2}, Batch: true,
+		Executable: map[string]string{"*": exe}, Args: []string{"{input}", "{output}", "{scale}"}, OutputExt: ".png",
+		Options: []engine.Option{{ID: engine.OptionTileImage, Name: "Split", Type: engine.OptionNumber, Default: "0"}},
+	}
+	o := options(t, tools, m)
+	o.EngineOptions = map[string]string{engine.OptionTileImage: "160"}
+
+	in := filepath.Join(t.TempDir(), "in.png")
+	ffmpeg(t, "-f", "lavfi", "-i", "testsrc2=s=200x130", "-frames:v", "1", in)
+	out := filepath.Join(t.TempDir(), "out.png")
+	if err := Image(context.Background(), o, in, out, noReport); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(runs)
+	if n := len(strings.Fields(string(data))); n != 1 {
+		t.Errorf("the engine started %d times, want once for all parts", n)
+	}
+	got, err := readPNG(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	whole := filepath.Join(t.TempDir(), "whole.png")
+	ffmpeg(t, "-i", in, "-vf", "scale=400:260:flags=bicubic", whole)
+	ref, err := readPNG(whole)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Bounds() != ref.Bounds() {
+		t.Fatalf("got %v, want %v", got.Bounds(), ref.Bounds())
+	}
+	var sum float64
+	for i := range got.Pix {
+		sum += math.Abs(float64(got.Pix[i]) - float64(ref.Pix[i]))
+	}
+	if mean := sum / float64(len(got.Pix)); mean > 1.5 {
+		t.Errorf("joined parts differ from the whole by %.2f on average", mean)
+	}
+}
