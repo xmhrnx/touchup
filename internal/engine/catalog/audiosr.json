@@ -7,12 +7,30 @@
   "homepage": "https://github.com/haoheliu/versatile_audio_super_resolution",
   "license": "MIT",
   "tags": ["Diffusion", "Music", "Speech", "Python"],
-  "requirements": "Python 3.9–3.11 · NVIDIA GPU recommended · about 6 GB with models",
+  "requirements": "Python 3.10+ · NVIDIA GPU recommended · about 6 GB with models",
   "media": ["audio"],
   "input": "audio",
-  "install": {"type": "pip", "packages": ["audiosr==0.0.7"], "size": "≈6 GB with PyTorch"},
-  "executable": {"*": "audiosr"},
-  "args": ["-i", "{input}", "-s", "{outputDir}", "{modelArgs}", "-d", "auto"],
+  "install": {
+    "type": "pip",
+    "size": "≈6 GB with PyTorch",
+    "pip": [
+      {
+        "args": ["torch>=2.7", "torchaudio", "torchvision"],
+        "indexURL": {"windows": "https://download.pytorch.org/whl/cu128"}
+      },
+      {"args": ["--no-deps", "audiosr==0.0.7"]},
+      {
+        "args": [
+          "numpy<2", "scipy", "soundfile", "librosa>=0.10", "torchlibrosa>=0.1", "transformers>=4.40,<5",
+          "huggingface-hub", "pandas", "unidecode", "phonemizer", "progressbar", "ftfy", "timm",
+          "einops", "pyyaml", "tqdm", "chardet"
+        ]
+      }
+    ],
+    "scripts": ["audiosr_launch.py"]
+  },
+  "executable": {"*": "python"},
+  "args": ["{engineDir}/audiosr_launch.py", "-i", "{input}", "-s", "{outputDir}", "{modelArgs}", "-d", "auto"],
   "outputExt": ".wav",
   "models": [
     {"id": "basic", "name": "General", "description": "Music, effects and mixed content.", "args": ["--model_name", "basic"]},

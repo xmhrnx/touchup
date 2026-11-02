@@ -11,6 +11,7 @@
   "media": ["image", "video"],
   "input": "image",
   "batch": true,
+  "serve": true,
   "install": {
     "type": "pip",
     "size": "≈ 3 GB with PyTorch, plus models",

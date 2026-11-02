@@ -10,6 +10,7 @@ Progress is printed as "N%" lines.
 """
 
 import argparse
+import json
 import math
 import os
 import sys
@@ -352,7 +353,7 @@ def explain(err):
     return f"{type(err).__name__}: {msg}"
 
 
-def main():
+def parse(argv):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--model", required=True)
     ap.add_argument("--input", required=True, help="an image or a folder of images")
@@ -363,8 +364,10 @@ def main():
     ap.add_argument("--no-color-fix", action="store_true", help="keep the model's own colors")
     ap.add_argument("--batch", type=int, default=1, help="frames per pass, for frames that fit in one tile")
     ap.add_argument("--precision", choices=["auto", "half", "bfloat16", "full"], default="auto")
-    args = ap.parse_args()
+    return ap.parse_args(argv)
 
+
+def load_model(args):
     device = pick_device(args.gpu)
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True  # video frames share a size: tune once
@@ -373,10 +376,13 @@ def main():
               "running on the CPU. Reinstall the engine to get a PyTorch for this GPU.", flush=True)
         device = torch.device("cpu")
     up = Upscaler(args.model, device, args.precision)
-    scale = args.scale or up.model.scale
     print(f"Loaded {up.model.architecture.name} {up.model.scale}x on {describe_device(up.device)} "
           f"in {up.precision()}, PyTorch {torch.__version__}", flush=True)
+    return up
 
+
+def run_job(up, args):
+    scale = args.scale or up.model.scale
     if os.path.isdir(args.input):
         os.makedirs(args.output, exist_ok=True)
         names = sorted(n for n in os.listdir(args.input) if os.path.splitext(n)[1].lower() in IMAGE_EXTS)
@@ -392,12 +398,39 @@ def main():
     run(up, jobs, scale, args.tile, not args.no_color_fix, max(1, args.batch), progress)
 
 
+def main():
+    """Runs the job in the arguments. With TOUCHUP_SERVE=1, it then takes
+    more from standard input, a JSON array of the command's arguments a
+    line, ending each with "TOUCHUP-SERVE-DONE <exit code>", so the model
+    loads once for every segment of a video."""
+    serving = os.environ.get("TOUCHUP_SERVE") == "1"
+    argv, up, key = sys.argv[1:], None, None
+    while True:
+        code = 0
+        try:
+            args = parse(argv)
+            k = (args.model, args.gpu, args.precision)
+            if up is None or k != key:
+                up, key = load_model(args), k
+            run_job(up, args)
+        except SystemExit as e:
+            code = e.code if isinstance(e.code, int) else (0 if e.code is None else 1)
+        except KeyboardInterrupt:
+            sys.exit(130)
+        except Exception as err:  # the last line is what TouchUp shows
+            traceback.print_exc()
+            print(f"Error: {explain(err)}", flush=True)
+            code = 1
+        if not serving:
+            sys.exit(code)
+        print(f"TOUCHUP-SERVE-DONE {code}", flush=True)
+        if code != 0:
+            sys.exit(code)
+        line = sys.stdin.readline()
+        if not line:
+            return
+        argv = json.loads(line)[1:]  # the command's arguments, after this script
+
+
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        sys.exit(130)
-    except Exception as err:  # the last line is what TouchUp shows
-        traceback.print_exc()
-        print(f"Error: {explain(err)}", flush=True)
-        sys.exit(1)
+    main()
