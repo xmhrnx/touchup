@@ -24,7 +24,7 @@ func pick(m map[string]string) string {
 // platform.
 func (m *Manifest) Supported() bool {
 	if m.Builtin() {
-		return true
+		return builtinSupported(m.ID)
 	}
 	if m.Install.Type == "archive" && pick(m.Install.URLs) == "" {
 		return false
@@ -80,7 +80,7 @@ func (m *Manifest) ExecutablePath() string {
 // Installed reports whether the engine is ready to run.
 func (m *Manifest) Installed() bool {
 	if m.Builtin() {
-		return true
+		return m.Supported()
 	}
 	if m.Install.Type != "none" && !exists(filepath.Join(m.Dir(), installedMarker)) {
 		return false

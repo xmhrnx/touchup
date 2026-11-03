@@ -64,6 +64,8 @@ The strongest engines are listed first.
 | Engine | Media | What it's best at | Install |
 | --- | --- | --- | --- |
 | Classic (built in) | Image, video | Upscaling without AI, the way TVs do: an edge-adaptive scaler (FSR 1's EASU) and contrast-adaptive sharpening (RCAS). Instant on the CPU; at 1x it only applies filters | Nothing: built in |
+| RTX Video (built in, Windows) | Image, video | NVIDIA's RTX Video Super Resolution from the graphics driver: very fast, clean and sharp, without invented texture | Nothing: built in; NVIDIA RTX GPU |
+| [RealBasicVSR](https://github.com/ckkelvinchan/RealBasicVSR) | Video | Multi-frame 4x: follows motion and merges neighboring frames, recovering detail spread over several of them | Python, NVIDIA GPU (6 GB+) |
 | [SeedVR2](https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler) (3B, 7B, 7B Sharp; FP8 and GGUF) | Video, image | One-step diffusion restoration with real, steady texture: the strongest open video upscaler | Python, NVIDIA GPU (8 GB+) |
 | [FlashVSR](https://github.com/OpenImagingLab/FlashVSR) v1.1, through [FlashVSR Ultra Fast](https://github.com/lihaoyun6/ComfyUI-FlashVSR_Ultra_Fast) | Video | One-step streaming diffusion: detail like SeedVR2's at several times the speed, for long videos | Python, NVIDIA GPU (8 GB+) |
 | PyTorch SR, through [spandrel](https://github.com/chaiNNer-org/spandrel) | Image, video | 13 community models that restore rather than invent detail, in seconds: DAT2 and RealPLKSR trained on compressed photos, DRCT-L and ATD for clean sources, SwinIR-L, Real-ESRGAN, anime and AI-art models | Python, NVIDIA GPU recommended |
@@ -122,6 +124,15 @@ engines. When the engine starts CUDA, it caps PyTorch at the memory free at that
 Engines are installed per user into `~/.local/share/TouchUp/engines` (Linux),
 `~/Library/Application Support/TouchUp/engines` (macOS) or `%LOCALAPPDATA%\TouchUp\engines`
 (Windows). Python engines each get a private virtual environment there.
+
+RTX Video reaches RTX Video Super Resolution the way browsers and VLC do: TouchUp creates a
+Direct3D 11 video processor on the NVIDIA GPU, turns on NVIDIA's super-resolution extension, and puts
+each frame through it as NV12, reading the result back as RGB. The calls go straight through COM from
+Go (`internal/engine/rtxvideo_windows.go`), so nothing is installed and no C compiler is needed.
+
+RealBasicVSR runs through `realbasicvsr_runner.py`, OpenMMLab's network made self-contained so its
+checkpoint loads without mmcv. It upscales chunks of frames that overlap in time, in overlapping
+tiles for large frames, in half precision on NVIDIA GPUs.
 
 ## Filters
 

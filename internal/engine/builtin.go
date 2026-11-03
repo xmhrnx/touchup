@@ -20,12 +20,50 @@ import (
 )
 
 // Built-in engines (install type "builtin") are written in Go and run
-// inside TouchUp: nothing to install or download. The one there is,
-// "classic", upscales without AI, with the filters package's scalers
-// and sharpening.
+// inside TouchUp: nothing to install or download. "classic" upscales
+// without AI, with the filters package's scalers and sharpening;
+// "rtxvideo" hands frames to NVIDIA's RTX Video Super Resolution in the
+// graphics driver (rtxvideo_windows.go).
 
 // Builtin reports whether the engine runs inside TouchUp.
 func (m *Manifest) Builtin() bool { return m.Install.Type == "builtin" }
+
+// Upscaler upscales pictures inside TouchUp. One is made for a job and
+// closed after it; it may keep state, like a GPU device, in between.
+type Upscaler interface {
+	// Upscale returns img scaled to w×h.
+	Upscale(img *filters.Image, w, h int) (*filters.Image, error)
+	Close()
+}
+
+// NewUpscaler returns the built-in engine's upscaler, with its option
+// values.
+func (m *Manifest) NewUpscaler(values map[string]string) (Upscaler, error) {
+	switch m.ID {
+	case "classic":
+		return classicUpscaler{m, values}, nil
+	case "rtxvideo":
+		return newRTXVideo()
+	}
+	return nil, fmt.Errorf("no built-in engine %q", m.ID)
+}
+
+// builtinSupported reports whether a built-in engine works on this
+// system.
+func builtinSupported(id string) bool {
+	return id != "rtxvideo" || rtxVideoSupported
+}
+
+type classicUpscaler struct {
+	m      *Manifest
+	values map[string]string
+}
+
+func (c classicUpscaler) Upscale(img *filters.Image, w, h int) (*filters.Image, error) {
+	return c.m.Classic(img, w, h, c.values), nil
+}
+
+func (classicUpscaler) Close() {}
 
 // ClassicSettings are the classic engine's option values: the scaling
 // method and how much detail to bring out, in [0, 1].
@@ -60,9 +98,11 @@ func (m *Manifest) optionValue(values map[string]string, id string) string {
 // runBuiltin runs a built-in engine on a picture, or on every picture in
 // a folder for batch runs.
 func (m *Manifest) runBuiltin(ctx context.Context, j Job) (string, error) {
-	if m.ID != "classic" {
-		return "", fmt.Errorf("no built-in engine %q", m.ID)
+	up, err := m.NewUpscaler(j.Options)
+	if err != nil {
+		return "", err
 	}
+	defer up.Close()
 	one := func(in, out string) error {
 		img, err := loadPicture(in)
 		if err != nil {
@@ -72,7 +112,11 @@ func (m *Manifest) runBuiltin(ctx context.Context, j Job) (string, error) {
 		if w <= 0 || h <= 0 {
 			w, h = img.W*max(1, j.Scale), img.H*max(1, j.Scale)
 		}
-		return savePNG(out, m.Classic(img, w, h, j.Options).NRGBA())
+		res, err := up.Upscale(img, w, h)
+		if err != nil {
+			return err
+		}
+		return savePNG(out, res.NRGBA())
 	}
 	info, err := os.Stat(j.Input)
 	if err != nil {
