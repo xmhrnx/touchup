@@ -16,6 +16,7 @@ var ErrNoPlayer = errors.New("ffplay was not found: install FFmpeg with ffplay t
 type Player struct {
 	mu      sync.Mutex
 	cmd     *exec.Cmd
+	stop    context.CancelFunc
 	playing string
 	// OnChange is called from a background goroutine when playback
 	// starts or stops, with the file playing or "".
@@ -28,21 +29,26 @@ func (p *Player) Play(tools Tools, path string) error {
 		return ErrNoPlayer
 	}
 	p.Stop()
-	cmd := proc.Command(context.Background(), tools.FFplay,
-		"-nodisp", "-autoexit", "-loglevel", "quiet", path)
+	// Cancelling the context ends ffplay and everything it started: on
+	// Windows "ffplay" is often a package manager's shim that runs the
+	// real one as a child, which killing the shim alone leaves playing.
+	ctx, stop := context.WithCancel(context.Background())
+	cmd := proc.Command(ctx, tools.FFplay, "-nodisp", "-autoexit", "-loglevel", "quiet", path)
 	if err := cmd.Start(); err != nil {
+		stop()
 		return err
 	}
 	p.mu.Lock()
-	p.cmd, p.playing = cmd, path
+	p.cmd, p.stop, p.playing = cmd, stop, path
 	p.mu.Unlock()
 	p.notify(path)
 	go func() {
 		cmd.Wait()
+		stop()
 		p.mu.Lock()
 		current := p.cmd == cmd
 		if current {
-			p.cmd, p.playing = nil, ""
+			p.cmd, p.stop, p.playing = nil, nil, ""
 		}
 		p.mu.Unlock()
 		if current {
@@ -55,11 +61,11 @@ func (p *Player) Play(tools Tools, path string) error {
 // Stop ends playback.
 func (p *Player) Stop() {
 	p.mu.Lock()
-	cmd := p.cmd
-	p.cmd, p.playing = nil, ""
+	cmd, stop := p.cmd, p.stop
+	p.cmd, p.stop, p.playing = nil, nil, ""
 	p.mu.Unlock()
-	if cmd != nil && cmd.Process != nil {
-		cmd.Process.Kill()
+	if cmd != nil {
+		stop()
 		p.notify("")
 	}
 }
