@@ -1,0 +1,110 @@
+{
+  "id": "realbasicvsr",
+  "name": "RealBasicVSR",
+  "featured": true,
+  "vendor": "Chan et al. · OpenMMLab",
+  "description": "Video upscaler that follows motion between frames and merges what neighboring frames show, so detail spread over several frames comes back, after cleaning up noise, blur and compression. The closest thing to DLSS for video files. 4x.",
+  "homepage": "https://github.com/ckkelvinchan/RealBasicVSR",
+  "license": "Apache-2.0",
+  "tags": ["Multi-frame", "PyTorch"],
+  "requirements": "Python 3.10+ · NVIDIA GPU with 6 GB+",
+  "media": ["video"],
+  "input": "image",
+  "batch": true,
+  "serve": true,
+  "install": {
+    "type": "pip",
+    "size": "≈ 3 GB with PyTorch, plus models",
+    "scripts": ["realbasicvsr_runner.py"],
+    "pip": [
+      {
+        "args": ["torch>=2.7"],
+        "indexURL": {"windows": "https://download.pytorch.org/whl/cu128"}
+      },
+      {"args": ["numpy", "pillow"]}
+    ]
+  },
+  "executable": {"*": "python"},
+  "args": [
+    "{engineDir}/realbasicvsr_runner.py",
+    "--model",
+    "{modelPath}",
+    "--input",
+    "{input}",
+    "--output",
+    "{output}"
+  ],
+  "gpuArgs": ["--gpu", "{gpu}"],
+  "outputExt": ".png",
+  "scales": [4],
+  "defaultScale": 4,
+  "models": [
+    {
+      "id": "x4",
+      "name": "RealBasicVSR x4",
+      "description": "Trained on real-world degraded video (REDS), with OpenMMLab's weights.",
+      "files": [
+        {
+          "url": "https://download.openmmlab.com/mmediting/restorers/real_basicvsr/realbasicvsr_c64b20_1x30x8_lr5e-5_150k_reds_20211104-52f77c2c.pth",
+          "name": "realbasicvsr_x4.pth"
+        }
+      ],
+      "recommended": true
+    }
+  ],
+  "options": [
+    {
+      "id": "chunk",
+      "name": "Frames at a time",
+      "type": "choice",
+      "default": "15",
+      "description": "Frames the model sees together. More let it gather detail from further away in time, but need more GPU memory.",
+      "choices": [
+        {"value": "8", "label": "8"},
+        {"value": "15", "label": "15"},
+        {"value": "30", "label": "30"}
+      ],
+      "args": ["--chunk", "{value}"]
+    },
+    {
+      "id": "tile",
+      "name": "Tile size",
+      "type": "choice",
+      "default": "480",
+      "description": "Frames larger than this are upscaled in overlapping tiles, measured on the original. Bigger tiles are faster but need more GPU memory; 480 suits 8–12 GB cards.",
+      "choices": [
+        {"value": "256", "label": "256 px"},
+        {"value": "360", "label": "360 px"},
+        {"value": "480", "label": "480 px"},
+        {"value": "720", "label": "720 px"},
+        {"value": "0", "label": "Whole picture"}
+      ],
+      "args": ["--tile", "{value}"]
+    },
+    {
+      "id": "cleaning",
+      "name": "Cleaning",
+      "type": "choice",
+      "default": "1",
+      "description": "Passes of the model's clean-up of noise, blur and compression before upscaling. More help badly damaged video, and smooth fine detail away on good video.",
+      "choices": [
+        {"value": "1", "label": "Standard"},
+        {"value": "2", "label": "Stronger"},
+        {"value": "3", "label": "Strongest"}
+      ],
+      "args": ["--cleaning", "{value}"]
+    },
+    {
+      "id": "precision",
+      "name": "Precision",
+      "type": "choice",
+      "default": "half",
+      "description": "Half precision is about twice as fast on NVIDIA GPUs.",
+      "choices": [
+        {"value": "half", "label": "Half (fastest)"},
+        {"value": "full", "label": "Full (slowest)"}
+      ],
+      "args": ["--precision", "{value}"]
+    }
+  ]
+}

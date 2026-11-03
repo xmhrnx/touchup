@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"runtime"
 	"slices"
 	"testing"
 )
@@ -22,7 +23,8 @@ func TestCatalogIsValid(t *testing.T) {
 		if err := m.Validate(); err != nil {
 			t.Errorf("%s: %v", m.ID, err)
 		}
-		if !m.Supported() {
+		// RTX Video goes through Direct3D, so it's Windows-only.
+		if !m.Supported() && !(m.ID == "rtxvideo" && runtime.GOOS != "windows") {
 			t.Errorf("%s has no build for this platform", m.ID)
 		}
 	}

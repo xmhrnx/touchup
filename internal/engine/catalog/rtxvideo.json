@@ -1,0 +1,19 @@
+{
+  "id": "rtxvideo",
+  "name": "RTX Video",
+  "featured": true,
+  "vendor": "NVIDIA",
+  "description": "NVIDIA's RTX Video Super Resolution, the AI upscaler browsers use for streaming video, run by the graphics driver. Very fast and clean: it removes compression artifacts and sharpens edges rather than inventing texture. Nothing to download.",
+  "homepage": "https://www.nvidia.com/en-us/geforce/news/rtx-video-super-resolution/",
+  "license": "Part of the NVIDIA driver",
+  "tags": ["AI", "Video", "NVIDIA"],
+  "requirements": "Windows · NVIDIA GeForce RTX GPU · recent NVIDIA driver",
+  "media": ["image", "video"],
+  "input": "image",
+  "batch": true,
+  "install": {"type": "builtin"},
+  "args": ["{input}", "{output}", "{outWidth}", "{outHeight}"],
+  "outputExt": ".png",
+  "scales": [2, 3, 4],
+  "defaultScale": 2
+}

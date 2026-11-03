@@ -174,7 +174,7 @@ func (e *Engines) footer(m *engine.Manifest) giode.Element {
 		)
 	case s.Installed(m.ID):
 		uninstall := giode.Element(giode.Box(giode.Styles{}))
-		if m.Install.Type != "none" {
+		if m.Install.Type != "none" && !m.Builtin() {
 			uninstall = action("engine-uninstall", tr.T("Uninstall"), "trash", theme.GhostButton, func() { s.UninstallEngine(m) })
 		}
 		// Engines with options get a Settings button; the website shrinks
@@ -216,7 +216,7 @@ func (e *Engines) footer(m *engine.Manifest) giode.Element {
 			site = action("engine-home-icon", "", "external-link", theme.GhostButton,
 				func() { go s.App.OpenURL(context.Background(), m.Homepage) })
 		}
-		if len(m.Options) > 0 && m.Install.Type != "none" {
+		if len(m.Options) > 0 && m.Install.Type != "none" && !m.Builtin() {
 			uninstall = action("engine-uninstall-icon", "", "trash", theme.GhostButton, func() { s.UninstallEngine(m) })
 		}
 		return row(check, settings, site, spacer, uninstall, remove())

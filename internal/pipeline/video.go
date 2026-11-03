@@ -118,6 +118,11 @@ func frameVideo(ctx context.Context, o Options, ws *workspace, in, out string, i
 	stage := tr.T("Upscaling frames")
 	done := 0
 	if o.Engine.Builtin() {
+		up, err := o.Engine.NewUpscaler(o.EngineOptions)
+		if err != nil {
+			return err
+		}
+		defer up.Close()
 		for ; ; done++ {
 			if err := ctx.Err(); err != nil {
 				return err
@@ -135,7 +140,9 @@ func frameVideo(ctx context.Context, o Options, ws *workspace, in, out string, i
 			}
 			fl.Cleanup(m, done)
 			fsz := o.size(m.W, m.H)
-			m = o.Engine.Classic(m, fsz.Width, fsz.Height, o.EngineOptions)
+			if m, err = up.Upscale(m, fsz.Width, fsz.Height); err != nil {
+				return err
+			}
 			fl.Look(m, done)
 			if err := write(nil, m); err != nil {
 				return err
