@@ -10,6 +10,10 @@ AudioSR, and takes care of everything around them. That means extracting and re-
 frames, keeping the original soundtrack, converting audio, running jobs in a queue and showing
 before/after comparisons. Nothing is uploaded.
 
+Videos go through image engines a segment at a time: one FFmpeg process decodes frames into a
+pipe, TouchUp hands the engine a few dozen at once, and the results go straight into the encoder,
+so the work folder never holds more than a few hundred megabytes, however long the video.
+
 ## Features
 
 - **Any engine.** A built-in catalog of open-source engines installs with one click, and you can

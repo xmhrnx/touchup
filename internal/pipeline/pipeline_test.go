@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -362,5 +363,51 @@ done
 	}
 	if mean := sum / float64(len(got.Pix)); mean > 1.5 {
 		t.Errorf("joined parts differ from the whole by %.2f on average", mean)
+	}
+}
+
+func TestVideoSegments(t *testing.T) {
+	tools := setup(t)
+	defer func(b int64) { segmentBytes = b }(segmentBytes)
+	segmentBytes = 1 // the smallest segments
+	counts := filepath.Join(t.TempDir(), "counts.txt")
+	// A batch engine that notes how many frames each run was given.
+	exe := script(t, `ls "$1" | wc -l >> "`+counts+`"
+for f in "$1"/*.png; do
+  ffmpeg -loglevel error -y -i "$f" -vf "scale=iw*$3:ih*$3" "$2/$(basename "$f")"
+done
+`)
+	o := options(t, tools, &engine.Manifest{
+		ID: "batch", Name: "Batch", Media: []string{"image", "video"}, Input: "image", Batch: true,
+		Executable: map[string]string{"*": exe}, Args: []string{"{input}", "{output}", "{scale}"}, OutputExt: ".png",
+	})
+	in := filepath.Join(t.TempDir(), "in.mp4")
+	ffmpeg(t, "-f", "lavfi", "-i", "testsrc2=s=64x48:r=25", "-f", "lavfi", "-i", "sine", "-t", "2",
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", in)
+	info, err := tools.Probe(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "out.mp4")
+	if err := Video(context.Background(), o, in, out, info, noReport); err != nil {
+		t.Fatal(err)
+	}
+	got, err := tools.Probe(context.Background(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Frames != info.Frames || got.Width != 128 || !got.HasAudio {
+		t.Errorf("got %d frames of %dx%d (audio %v), want %d of 128x96 with audio", got.Frames, got.Width, got.Height, got.HasAudio, info.Frames)
+	}
+	data, _ := os.ReadFile(counts)
+	runs := strings.Fields(string(data))
+	if len(runs) != 3 { // 50 frames, 24 new a run
+		t.Errorf("%d runs, want 3: %v", len(runs), runs)
+	}
+	for i, r := range runs {
+		n, _ := strconv.Atoi(r)
+		if want := minSegment + contextFrames; n > want || (i > 0 && n <= contextFrames) {
+			t.Errorf("run %d had %d frames on disk, want at most %d", i+1, n, want)
+		}
 	}
 }

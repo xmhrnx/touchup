@@ -2,22 +2,11 @@ package media
 
 import (
 	"context"
-	"path/filepath"
 	"strconv"
 )
 
 // framePattern is the file name pattern of split frames.
 const framePattern = "%08d"
-
-// SplitFrames writes every frame of a video to dir as numbered PNGs,
-// keeping the source's timing so frames line up with the audio again.
-func (t Tools) SplitFrames(ctx context.Context, path, dir string, duration float64, onProgress Progress) error {
-	return t.ffmpeg(ctx, duration, onProgress, "-i", path, "-map", "0:v:0",
-		"-fps_mode", "passthrough", "-pix_fmt", "rgb24",
-		// Light compression: frames are read once and deleted, and the
-		// default level takes longer than fast engines do.
-		"-compression_level", "1", filepath.Join(dir, framePattern+".png"))
-}
 
 // JoinOptions controls how frames are encoded back into a video.
 type JoinOptions struct {
@@ -36,14 +25,10 @@ func scaleFilter(w, h int) string {
 	return "scale=" + strconv.Itoa(w) + ":" + strconv.Itoa(h) + ":flags=lanczos"
 }
 
-// JoinFrames encodes numbered PNGs in dir into a video at out, muxing in
-// the audio of AudioSrc when set.
-func (t Tools) JoinFrames(ctx context.Context, dir, out string, o JoinOptions, onProgress Progress) error {
-	ext := o.FrameExt
-	if ext == "" {
-		ext = ".png"
-	}
-	args := []string{"-framerate", strconv.FormatFloat(o.FPS, 'f', 6, 64), "-i", filepath.Join(dir, framePattern+ext)}
+// encodeArgs are the arguments after the frames' input: the audio, the
+// size and the codec.
+func encodeArgs(o JoinOptions) []string {
+	var args []string
 	if o.AudioSrc != "" {
 		args = append(args, "-i", o.AudioSrc, "-map", "0:v:0", "-map", "1:a?", "-c:a", "copy")
 	}
@@ -60,10 +45,7 @@ func (t Tools) JoinFrames(ctx context.Context, dir, out string, o JoinOptions, o
 		args = append(args, "-c:v", "libx264", "-crf", strconv.Itoa(o.Quality), "-preset", "slow",
 			"-pix_fmt", "yuv420p")
 	}
-	// No -shortest: an audio track a few milliseconds short would cut
-	// the last frames.
-	args = append(args, out)
-	return t.ffmpeg(ctx, o.Duration, onProgress, args...)
+	return args
 }
 
 // VideoExt returns the container extension for a codec.
