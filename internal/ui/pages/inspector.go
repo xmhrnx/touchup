@@ -34,11 +34,13 @@ type Inspector struct {
 	options *components.EngineSettings
 	adjust  *giode.ButtonElement
 	tune    *giode.ButtonElement
+	filters *giode.ButtonElement
 }
 
 // NewInspector creates the inspector.
-func NewInspector(s *store.Store, options *components.EngineSettings) *Inspector {
+func NewInspector(s *store.Store, options *components.EngineSettings, filters *components.FilterSettings) *Inspector {
 	in := &Inspector{s: s, options: options}
+	in.filters = theme.SecondaryButton(tr.T("Adjust"), "wand-sparkles").OnClick(filters.Show)
 	in.tune = theme.SecondaryButton(tr.T("Find the fastest"), "gauge").OnClick(s.RunTune)
 	in.adjust = theme.SecondaryButton(tr.T("Adjust"), "sliders-horizontal").OnClick(func() {
 		if sess := s.Session; sess != nil {
@@ -189,6 +191,9 @@ func (in *Inspector) content() giode.Element {
 		if len(sel.Engine.Options) > 0 {
 			sections = append(sections, in.engineSettings(sel.Engine))
 		}
+		if kind != media.Audio {
+			sections = append(sections, in.filterSettings())
+		}
 		sections = append(sections, in.output(sel))
 	}
 	return giode.Stack(giode.Styles{Width: -1, Gap: 26, Padding: giode.UniformInset(18)}, sections...)
@@ -226,6 +231,19 @@ func (in *Inspector) engineSettings(m *engine.Manifest) giode.Element {
 		)
 	}
 	return giode.Stack(giode.Styles{Gap: 10, Width: -1}, group...)
+}
+
+// filterSettings summarizes TouchUp's own filters, with a button to
+// change them.
+func (in *Inspector) filterSettings() giode.Element {
+	return giode.Stack(giode.Styles{Gap: 10, Width: -1},
+		components.SectionLabel(tr.T("Filters")),
+		giode.Row(giode.Styles{Width: -1, Gap: 12, Align: giode.AlignCenter, Wrap: giode.WrapNoWrap},
+			giode.Box(giode.Styles{FlexGrow: 1}, giode.Text(components.FilterSummary(in.s.Filters()),
+				theme.Caption().With(giode.Styles{MaxLines: 3, TextOverflow: giode.TextOverflowEllipsis}))),
+			in.filters,
+		),
+	)
 }
 
 // longVideoFrames is the length, about a minute and a half, past which
@@ -269,9 +287,15 @@ func (in *Inspector) output(sel store.Selection) giode.Element {
 			rows = append(rows, line(tr.T("Format"), strings.ToUpper(st.ImageFormat)))
 		} else {
 			codec := map[string]string{"h264": "H.264", "h265": "H.265", "prores": "ProRes 422 HQ"}[st.VideoCodec]
+			audio := tr.T("Copied from the original")
+			if st.ConvertAudio {
+				audio = tr.T("Converted to AAC")
+			} else if info.HasAudio && media.OutputExt(st.VideoCodec, info.AudioCodec, false) == ".mkv" {
+				codec = "MKV · " + codec // the original track only fits Matroska
+			}
 			rows = append(rows, line(tr.T("Format"), codec), line(tr.T("Frames"), format.Count(info.Frames)))
 			if info.HasAudio {
-				rows = append(rows, line(tr.T("Audio"), tr.T("Copied from the original")))
+				rows = append(rows, line(tr.T("Audio"), audio))
 			}
 		}
 	case media.Audio:

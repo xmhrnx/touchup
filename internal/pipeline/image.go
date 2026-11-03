@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mehran9675/touchup/internal/filters"
 	"github.com/mehran9675/touchup/internal/tr"
 )
 
@@ -28,10 +29,25 @@ func Image(ctx context.Context, o Options, in, out string, report Reporter) erro
 	if err != nil {
 		return err
 	}
+	fl := o.Settings.Filters
+	if fl.HasCleanup() {
+		report(Update{Stage: tr.T("Cleaning up"), Frac: 0.04})
+		if err := filterFile(src, src, func(m *filters.Image) { fl.Cleanup(m, 0) }); err != nil {
+			return err
+		}
+	}
 	report(Update{Stage: tr.T("Upscaling"), Frac: 0.05})
-	result, err := o.picture(ctx, ws, src, info.Width, info.Height, report, tr.T("Upscaling"), 0.05, 0.95)
+	result, err := o.picture(ctx, ws, src, info.Width, info.Height, report, tr.T("Upscaling"), 0.05, 0.9)
 	if err != nil {
 		return err
+	}
+	if fl.HasLook() {
+		report(Update{Stage: tr.T("Applying filters"), Frac: 0.92})
+		looked := filepath.Join(ws.out, "filtered.png")
+		if err := filterFile(result, looked, func(m *filters.Image) { fl.Look(m, 0) }); err != nil {
+			return err
+		}
+		result = looked
 	}
 	report(Update{Stage: tr.T("Saving"), Frac: 0.96})
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {

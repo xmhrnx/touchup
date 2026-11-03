@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/mehran9675/touchup/internal/engine"
+	"github.com/mehran9675/touchup/internal/filters"
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/settings"
 )
@@ -409,5 +410,130 @@ done
 		if want := minSegment + contextFrames; n > want || (i > 0 && n <= contextFrames) {
 			t.Errorf("run %d had %d frames on disk, want at most %d", i+1, n, want)
 		}
+	}
+}
+
+func classic(t *testing.T, tools media.Tools) Options {
+	t.Helper()
+	m := &engine.Manifest{ID: "classic", Name: "Classic", Media: []string{"image", "video"}, Input: "image", Batch: true,
+		Install: engine.InstallSpec{Type: "builtin"}, Args: []string{"{input}", "{output}", "{outWidth}", "{outHeight}"},
+		OutputExt: ".png", Scales: []int{1, 2, 3, 4}}
+	if err := m.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	return Options{Engine: m, Scale: 2, Settings: settings.Default(), Tools: tools}
+}
+
+func TestClassicVideoWithFilters(t *testing.T) {
+	tools := setup(t)
+	o := classic(t, tools)
+	o.Settings.Filters = filters.Settings{Denoise: 40, Sharpen: 30, Saturation: -100}
+	in := filepath.Join(t.TempDir(), "in.mp4")
+	ffmpeg(t, "-f", "lavfi", "-i", "testsrc2=s=64x48:r=25", "-f", "lavfi", "-i", "sine", "-t", "1",
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", in)
+	info, err := tools.Probe(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "out.mp4")
+	if err := Video(context.Background(), o, in, out, info, noReport); err != nil {
+		t.Fatal(err)
+	}
+	got, err := tools.Probe(context.Background(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Width != 128 || got.Height != 96 || got.Frames != info.Frames || !got.HasAudio {
+		t.Errorf("got %d frames of %dx%d (audio %v), want %d of 128x96 with audio", got.Frames, got.Width, got.Height, got.HasAudio, info.Frames)
+	}
+	// Saturation -100 makes it black and white.
+	frame, err := tools.FrameAt(context.Background(), out, 0.5, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, g, b, _ := frame.At(40, 40).RGBA()
+	if d := max(r, g, b) - min(r, g, b); d > 0x0800 {
+		t.Errorf("color left in a black and white result: %x %x %x", r, g, b)
+	}
+}
+
+func TestEngineFramesWithFilters(t *testing.T) {
+	tools := setup(t)
+	exe := script(t, `for f in "$1"/*.png; do
+  ffmpeg -loglevel error -y -i "$f" -vf "scale=iw*$3:ih*$3" "$2/$(basename "$f")"
+done
+`)
+	o := options(t, tools, &engine.Manifest{
+		ID: "batch", Name: "Batch", Media: []string{"image", "video"}, Input: "image", Batch: true,
+		Executable: map[string]string{"*": exe}, Args: []string{"{input}", "{output}", "{scale}"}, OutputExt: ".png",
+	})
+	o.Settings.Filters = filters.Settings{Deblock: 50, Grain: 30}
+	o.Settings.ConvertAudio = true
+	in := filepath.Join(t.TempDir(), "in.mp4")
+	ffmpeg(t, "-f", "lavfi", "-i", "testsrc2=s=64x48:r=25", "-f", "lavfi", "-i", "sine", "-t", "1",
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "mp3", in)
+	info, err := tools.Probe(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "out.mp4")
+	if err := Video(context.Background(), o, in, out, info, noReport); err != nil {
+		t.Fatal(err)
+	}
+	got, err := tools.Probe(context.Background(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Width != 128 || got.Frames != info.Frames || got.AudioCodec != "aac" {
+		t.Errorf("got %d frames of %dx%d, audio %q; want %d of 128x96, AAC", got.Frames, got.Width, got.Height, got.AudioCodec, info.Frames)
+	}
+}
+
+func TestClassicImage(t *testing.T) {
+	tools := setup(t)
+	o := classic(t, tools)
+	o.Scale = 3
+	o.Settings.Filters = filters.Settings{Brightness: 20}
+	in := filepath.Join(t.TempDir(), "in.png")
+	ffmpeg(t, "-f", "lavfi", "-i", "testsrc2=s=50x40", "-frames:v", "1", in)
+	out := filepath.Join(t.TempDir(), "out.png")
+	if err := Image(context.Background(), o, in, out, noReport); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readPNG(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b := got.Bounds(); b.Dx() != 150 || b.Dy() != 120 {
+		t.Errorf("got %v, want 150x120", b)
+	}
+}
+
+func TestWholeVideoWithFilters(t *testing.T) {
+	tools := setup(t)
+	// A video engine: upscales the file it's given.
+	exe := script(t, `ffmpeg -loglevel error -y -i "$1" -vf "scale=iw*$3:ih*$3" -an "$2"`+"\n")
+	o := options(t, tools, &engine.Manifest{
+		ID: "whole", Name: "Whole", Media: []string{"video"}, Input: "video",
+		Executable: map[string]string{"*": exe}, Args: []string{"{input}", "{output}", "{scale}"}, OutputExt: ".mp4",
+	})
+	o.Settings.Filters = filters.Settings{Deinterlace: true, Contrast: 20}
+	in := filepath.Join(t.TempDir(), "in.mp4")
+	ffmpeg(t, "-f", "lavfi", "-i", "testsrc2=s=64x48:r=25", "-f", "lavfi", "-i", "sine", "-t", "1",
+		"-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", in)
+	info, err := tools.Probe(context.Background(), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "out.mp4")
+	if err := Video(context.Background(), o, in, out, info, noReport); err != nil {
+		t.Fatal(err)
+	}
+	got, err := tools.Probe(context.Background(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Width != 128 || got.Frames != info.Frames || !got.HasAudio {
+		t.Errorf("got %d frames of %dx%d (audio %v), want %d of 128x96 with audio", got.Frames, got.Width, got.Height, got.HasAudio, info.Frames)
 	}
 }

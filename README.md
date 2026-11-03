@@ -63,6 +63,7 @@ The strongest engines are listed first.
 
 | Engine | Media | What it's best at | Install |
 | --- | --- | --- | --- |
+| Classic (built in) | Image, video | Upscaling without AI, the way TVs do: an edge-adaptive scaler (FSR 1's EASU) and contrast-adaptive sharpening (RCAS). Instant on the CPU; at 1x it only applies filters | Nothing: built in |
 | [SeedVR2](https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler) (3B, 7B, 7B Sharp; FP8 and GGUF) | Video, image | One-step diffusion restoration with real, steady texture: the strongest open video upscaler | Python, NVIDIA GPU (8 GB+) |
 | [FlashVSR](https://github.com/OpenImagingLab/FlashVSR) v1.1, through [FlashVSR Ultra Fast](https://github.com/lihaoyun6/ComfyUI-FlashVSR_Ultra_Fast) | Video | One-step streaming diffusion: detail like SeedVR2's at several times the speed, for long videos | Python, NVIDIA GPU (8 GB+) |
 | PyTorch SR, through [spandrel](https://github.com/chaiNNer-org/spandrel) | Image, video | 13 community models that restore rather than invent detail, in seconds: DAT2 and RealPLKSR trained on compressed photos, DRCT-L and ATD for clean sources, SwinIR-L, Real-ESRGAN, anime and AI-art models | Python, NVIDIA GPU recommended |
@@ -121,6 +122,32 @@ engines. When the engine starts CUDA, it caps PyTorch at the memory free at that
 Engines are installed per user into `~/.local/share/TouchUp/engines` (Linux),
 `~/Library/Application Support/TouchUp/engines` (macOS) or `%LOCALAPPDATA%\TouchUp\engines`
 (Windows). Python engines each get a private virtual environment there.
+
+## Filters
+
+TouchUp has its own filters, written in Go in `internal/filters`: no FFmpeg filters, GPU or
+libraries. They work with any engine, or on their own with Classic at 1x. Clean-up runs on the
+source, before the engine, where it's cheap and keeps an AI model from sharpening the faults:
+
+- **Deinterlace**: rebuilds every other line by edge-based line averaging, top or bottom field first.
+- **Deblock**: smooths 8-pixel block edges where the step across is small enough to be an artifact.
+- **Denoise**: a 5×5 bilateral filter, which averages only neighbors of similar brightness.
+- **Deband**: replaces pixels whose randomly sampled surroundings are all within a few levels with
+  their average, and dithers so new steps don't form.
+
+The look is applied to the result: **sharpen** (RCAS), **brightness**, **contrast**, **warmth**,
+**saturation** (down to black and white) and **film grain** (monochrome, strongest in the midtones,
+different every frame, in three sizes).
+
+Video frames go through the filters in memory; with Classic the whole job does, so nothing is
+written but the result. A video engine that reads the file itself (SeedVR2) gets a cleaned copy
+first, and the look is applied as its result is encoded.
+
+## Sound in videos
+
+A video's sound is copied as it is. When the original track can't go in the video's usual
+container (PCM or Vorbis in MP4, say), the result is MKV instead. Settings can convert it to AAC at
+256 kbps instead, for players that need it.
 
 ## Requirements
 
@@ -216,7 +243,8 @@ assets/                 app icon, Inter font, Lucide icons (with their licenses)
 tools/icon/             draws assets/icon.png: go run ./tools/icon assets/icon.png
 tools/i18n/             lists the messages and checks the translations (see Translations)
 internal/
-  engine/               manifests, the built-in catalog, install, run, engine servers
+  engine/               manifests, the built-in catalog, install, run, engine servers, built-in engines
+  filters/              clean-up, look and non-AI scaling, in plain Go
     scripts/            runner and launcher scripts shipped to Python engines
   media/                FFmpeg: probe, frames, clips, waveforms, spectrograms, playback
   pipeline/             whole-file upscaling and previews, built on engine + media

@@ -62,6 +62,9 @@ var defaultProgress = regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%`)
 // extension in OutputDir (for engines that pick their own names). Batch
 // runs return OutputDir.
 func (m *Manifest) Run(ctx context.Context, j Job) (string, error) {
+	if m.Builtin() {
+		return m.runBuiltin(ctx, j)
+	}
 	exe := m.ExecutablePath()
 	if exe == "" {
 		return "", errors.New(tr.T("{engine} is not installed", "engine", m.Name))

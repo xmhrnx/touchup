@@ -1,0 +1,47 @@
+{
+  "id": "classic",
+  "name": "Classic",
+  "featured": true,
+  "vendor": "TouchUp",
+  "description": "Upscales without AI, the way TVs do: an edge-following scaler keeps lines crisp and contrast-adaptive sharpening brings out the detail that's there, without inventing any. Built in, runs on the CPU, nothing to download. At 1x it only applies filters.",
+  "homepage": "https://gpuopen.com/fidelityfx-superresolution/",
+  "license": "MIT · algorithms from AMD FidelityFX FSR 1",
+  "tags": ["Classic", "CPU"],
+  "requirements": "Built in",
+  "media": ["image", "video"],
+  "input": "image",
+  "batch": true,
+  "install": {"type": "builtin"},
+  "args": ["{input}", "{output}", "{outWidth}", "{outHeight}"],
+  "outputExt": ".png",
+  "scales": [1, 2, 3, 4],
+  "defaultScale": 2,
+  "options": [
+    {
+      "id": "method",
+      "name": "Scaling",
+      "type": "choice",
+      "default": "edge",
+      "description": "Edge-adaptive follows lines and edges so they stay crisp without stairs or halos, like a TV's scaler. Lanczos is sharp and even; bicubic is soft.",
+      "choices": [
+        {"value": "edge", "label": "Edge-adaptive"},
+        {"value": "lanczos", "label": "Lanczos"},
+        {"value": "bicubic", "label": "Bicubic"}
+      ]
+    },
+    {
+      "id": "detail",
+      "name": "Detail enhancement",
+      "type": "choice",
+      "default": "50",
+      "description": "Sharpening after upscaling that brings out texture without halos, and holds back where the picture is noisy.",
+      "choices": [
+        {"value": "0", "label": "Off"},
+        {"value": "25", "label": "Subtle"},
+        {"value": "50", "label": "Medium"},
+        {"value": "75", "label": "Strong"},
+        {"value": "100", "label": "Maximum"}
+      ]
+    }
+  ]
+}

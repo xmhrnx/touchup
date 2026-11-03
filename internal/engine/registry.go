@@ -41,6 +41,9 @@ func Load() (*Registry, []error) {
 	custom, _ := filepath.Glob(filepath.Join(paths.CustomManifests(), "*.json"))
 	for _, file := range custom {
 		m, err := ReadManifest(file)
+		if err == nil && m.Builtin() {
+			err = fmt.Errorf("%s: install.type must be archive, pip or none", filepath.Base(file))
+		}
 		if err != nil {
 			errs = append(errs, err)
 			continue
