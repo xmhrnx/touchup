@@ -439,6 +439,7 @@
   "Storage": "Storage",
   "Strong": "Strong",
   "Studio": "Studio",
+  "Subtle": "Subtle",
   "SwinIR-L · Real-world": "SwinIR-L · Real-world",
   "Take colors from the original and detail from the model, for models that drift on saturated hues.": "Take colors from the original and detail from the model, for models that drift on saturated hues.",
   "Test-time augmentation": "Test-time augmentation",

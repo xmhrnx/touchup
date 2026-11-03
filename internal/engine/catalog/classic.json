@@ -37,7 +37,7 @@
       "description": "Sharpening after upscaling that brings out texture without halos, and holds back where the picture is noisy.",
       "choices": [
         {"value": "0", "label": "Off"},
-        {"value": "25", "label": "Light"},
+        {"value": "25", "label": "Subtle"},
         {"value": "50", "label": "Medium"},
         {"value": "75", "label": "Strong"},
         {"value": "100", "label": "Maximum"}
