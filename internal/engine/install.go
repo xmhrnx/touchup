@@ -31,6 +31,9 @@ func Install(ctx context.Context, m *Manifest, python string, report Report) err
 	if !m.Supported() {
 		return errors.New(tr.T("this engine has no build for your system"))
 	}
+	if m.Builtin() {
+		return nil
+	}
 	if m.Install.Type == "none" {
 		if m.ExecutablePath() == "" {
 			return errors.New(tr.T("{program} was not found; check the executable path", "program", pick(m.Executable)))
@@ -69,7 +72,7 @@ func Install(ctx context.Context, m *Manifest, python string, report Report) err
 
 // Uninstall removes the engine's folder.
 func Uninstall(m *Manifest) error {
-	if m.Install.Type == "none" {
+	if m.Install.Type == "none" || m.Builtin() {
 		return nil
 	}
 	return os.RemoveAll(m.Dir())

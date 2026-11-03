@@ -68,7 +68,7 @@ func (s *Store) Enqueue() {
 	case media.Image:
 		ext = "." + s.Settings.ImageFormat
 	case media.Video:
-		ext = media.VideoExt(s.Settings.VideoCodec)
+		ext = media.OutputExt(s.Settings.VideoCodec, sess.Info.AudioCodec, s.Settings.ConvertAudio)
 	case media.Audio:
 		ext = "." + s.Settings.AudioFormat
 	}

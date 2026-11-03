@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mehran9675/touchup/internal/filters"
 	"github.com/mehran9675/touchup/internal/tr"
 )
 
@@ -56,6 +57,9 @@ func PreviewFrame(ctx context.Context, o Options, path string, at float64, repor
 			return FramePreview{}, err
 		}
 		after, err := o.Tools.FrameAt(ctx, result, at-start, 0)
+		if err == nil && o.Settings.Filters.HasLook() {
+			after = filterImage(after, func(m *filters.Image) { o.Settings.Filters.Look(m, 0) })
+		}
 		return FramePreview{Before: before, After: after}, err
 	}
 
@@ -68,6 +72,13 @@ func PreviewFrame(ctx context.Context, o Options, path string, at float64, repor
 	if err != nil {
 		return FramePreview{}, err
 	}
+	fl := o.Settings.Filters
+	if fl.HasCleanup() {
+		report(Update{Stage: tr.T("Cleaning up"), Frac: 0.08})
+		if err := filterFile(frame, frame, func(m *filters.Image) { fl.Cleanup(m, 0) }); err != nil {
+			return FramePreview{}, err
+		}
+	}
 	b := before.Bounds()
 	sz := o.size(b.Dx(), b.Dy())
 	stage := tr.T("Upscaling to {size}", "size", fmt.Sprintf("%d × %d", sz.Width, sz.Height))
@@ -77,6 +88,9 @@ func PreviewFrame(ctx context.Context, o Options, path string, at float64, repor
 		return FramePreview{}, err
 	}
 	after, err := o.Tools.LoadImage(ctx, result)
+	if err == nil && fl.HasLook() {
+		after = filterImage(after, func(m *filters.Image) { fl.Look(m, 0) })
+	}
 	return FramePreview{Before: before, After: after}, err
 }
 

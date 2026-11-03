@@ -125,7 +125,8 @@ type ModelFile struct {
 // InstallSpec says how to install an engine.
 type InstallSpec struct {
 	// Type is "archive" (download and unpack), "pip" (a Python virtual
-	// environment) or "none" (Executable already exists).
+	// environment), "none" (Executable already exists) or, for TouchUp's
+	// own engines only, "builtin" (written in Go; see builtin.go).
 	Type string `json:"type"`
 	// URLs of archives by "goos/goarch", "goos" or "*".
 	URLs map[string]string `json:"urls,omitempty"`
@@ -272,11 +273,11 @@ func (m *Manifest) Validate() error {
 		if len(m.Install.Packages) == 0 && len(m.Install.Pip) == 0 {
 			problems = append(problems, "a pip install needs packages")
 		}
-	case "none":
+	case "none", "builtin":
 	default:
 		problems = append(problems, "install.type must be archive, pip or none")
 	}
-	if len(m.Executable) == 0 {
+	if len(m.Executable) == 0 && !m.Builtin() {
 		problems = append(problems, "executable is required")
 	}
 	if !slices.ContainsFunc(m.Args, func(a string) bool { return strings.Contains(a, "{input") }) {

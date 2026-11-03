@@ -38,6 +38,7 @@ type Settings struct {
 	scroll *scroll.Scroll
 
 	mode, image, audio, codec, gpu *segmented.Control
+	videoAudio                     *segmented.Control
 	quality                        *slider.Slider
 	keepWork, sysmem               *toggle.Switch
 	language                       *dropdown.Select
@@ -68,6 +69,12 @@ func NewSettings(s *store.Store) *Settings {
 		update(func(c *settings.Settings) { c.VideoCodec = videoCodecs[i] })
 	})
 	p.codec.SetSelected(max(0, slices.Index(videoCodecs, st.VideoCodec)))
+	p.videoAudio = theme.Segmented(tr.T("Copy the original"), "AAC").OnChange(func(i int) {
+		update(func(c *settings.Settings) { c.ConvertAudio = i == 1 })
+	})
+	if st.ConvertAudio {
+		p.videoAudio.SetSelected(1)
+	}
 	p.gpu = theme.Segmented(tr.T("Auto"), "GPU 0", "GPU 1", "GPU 2").OnChange(func(i int) {
 		update(func(c *settings.Settings) { c.GPU = gpus[i] })
 	})
@@ -203,6 +210,9 @@ func (p *Settings) content() giode.Element {
 			components.SettingRow(tr.T("Video codec"), tr.T("H.265 is smaller; ProRes is for editing."), seg(p.codec, 260)),
 			components.SettingRow(tr.T("Video quality"), fmt.Sprintf("CRF %d · %s", st.VideoQuality, qualityWord(st.VideoQuality)),
 				giode.Box(giode.Styles{Width: 260}, p.quality)),
+			components.SettingRow(tr.T("Sound in videos"),
+				tr.T("Copying keeps the original track untouched; a track MP4 can't hold makes the video MKV. AAC converts it at 256 kbps for players that need it."),
+				seg(p.videoAudio, 260)),
 			components.SettingRow(tr.T("Audio format"), tr.T("WAV and FLAC are lossless; MP3 is encoded at 320 kbps."), seg(p.audio, 260)),
 		),
 		section(tr.T("Hardware"),

@@ -125,7 +125,13 @@ func (t Tools) WriteFrames(ctx context.Context, out string, o JoinOptions) (*Fra
 		return nil, ErrNoFFmpeg
 	}
 	args := []string{"-hide_banner", "-loglevel", "error", "-y",
-		"-f", "image2pipe", "-framerate", strconv.FormatFloat(o.FPS, 'f', 6, 64), "-c:v", frameCodec(o.FrameExt), "-i", "pipe:0"}
+		"-framerate", strconv.FormatFloat(o.FPS, 'f', 6, 64)}
+	if o.RawWidth > 0 && o.RawHeight > 0 {
+		args = append(args, "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", fmt.Sprintf("%dx%d", o.RawWidth, o.RawHeight))
+	} else {
+		args = append(args, "-f", "image2pipe", "-c:v", frameCodec(o.FrameExt))
+	}
+	args = append(args, "-i", "pipe:0")
 	args = append(args, encodeArgs(o)...)
 	args = append(args, out)
 	ctx, cancel := context.WithCancel(ctx)
@@ -159,7 +165,8 @@ func frameCodec(ext string) string {
 	return "png"
 }
 
-// Write encodes the next frame, an image file's bytes.
+// Write encodes the next frame: an image file's bytes, or packed RGB
+// for a raw writer.
 func (w *FrameWriter) Write(png []byte) error {
 	if _, err := w.in.Write(png); err != nil {
 		w.Abort()

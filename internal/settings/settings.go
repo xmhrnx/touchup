@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mehran9675/touchup/internal/filters"
 	"github.com/mehran9675/touchup/internal/paths"
 )
 
@@ -31,14 +32,21 @@ type Settings struct {
 	AudioFormat  string `json:"audioFormat"`  // wav, flac, mp3
 	VideoCodec   string `json:"videoCodec"`   // h264, h265, prores
 	VideoQuality int    `json:"videoQuality"` // CRF, lower is better
-	KeepWork     bool   `json:"keepWork"`     // keep frames and clips after a job
-	LightMode    bool   `json:"lightMode"`
+	// ConvertAudio encodes a video's sound as AAC instead of copying the
+	// original track, which then goes in Matroska when it doesn't fit
+	// the video's usual container.
+	ConvertAudio bool `json:"convertAudio,omitempty"`
+	KeepWork     bool `json:"keepWork"` // keep frames and clips after a job
+	LightMode    bool `json:"lightMode"`
 	// Language is the UI's language ("de"), or empty for the system's.
 	Language string `json:"language,omitempty"`
 
 	// Choices remembers the engine, model and scale last used for each
 	// kind of media.
 	Choices map[string]Choice `json:"choices,omitempty"`
+	// Filters are applied to images and videos, with or without
+	// upscaling.
+	Filters filters.Settings `json:"filters,omitempty"`
 	// EngineOptions are the user's values for engines' options, by
 	// engine ID and option ID. Options not here use their defaults.
 	EngineOptions map[string]map[string]string `json:"engineOptions,omitempty"`
