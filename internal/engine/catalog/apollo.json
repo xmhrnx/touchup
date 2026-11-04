@@ -21,10 +21,12 @@
         "indexURL": {"windows": "https://download.pytorch.org/whl/cu128"}
       },
       {"args": ["numpy", "huggingface-hub", "omegaconf", "soundfile"]}
-    ]
+    ],
+    "scripts": ["apollo_launch.py"]
   },
   "executable": {"*": "python"},
   "args": [
+    "{engineDir}/apollo_launch.py",
     "{engineDir}/src/inference.py",
     "--in_wav",
     "{input}",
@@ -56,9 +58,10 @@
       "id": "chunk",
       "name": "Chunk length",
       "type": "choice",
-      "default": "10",
-      "description": "Seconds of audio processed at a time. Longer chunks are faster but need more GPU memory.",
+      "default": "5",
+      "description": "Seconds of audio processed at a time. Longer chunks are a little faster but need more GPU memory: 5 s suits 8–12 GB cards. When the GPU runs out of memory, TouchUp halves the chunk and carries on.",
       "choices": [
+        {"value": "3", "label": "3 s"},
         {"value": "5", "label": "5 s"},
         {"value": "10", "label": "10 s"},
         {"value": "20", "label": "20 s"},
