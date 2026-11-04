@@ -23,7 +23,8 @@
         "args": [
           "numpy<2", "scipy", "soundfile", "librosa>=0.10", "torchlibrosa>=0.1", "transformers>=4.40,<5",
           "huggingface-hub", "pandas", "unidecode", "phonemizer", "progressbar", "ftfy", "timm",
-          "einops", "pyyaml", "tqdm", "chardet"
+          "einops", "pyyaml", "tqdm", "chardet", "matplotlib", "scikit-learn", "regex", "requests", "pillow",
+          "protobuf"
         ]
       }
     ],
