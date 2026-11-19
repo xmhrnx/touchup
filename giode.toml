@@ -1,5 +1,5 @@
 # giode.toml configures how the giode CLI builds this app.
-# Reference: https://github.com/mehran9675/giode-cli#giodetoml
+# Reference: https://github.com/xmhrnx/giode-cli#giodetoml
 
 [app]
 name = "TouchUp"
@@ -7,11 +7,13 @@ id = "com.mehran9675.touchup"            # reverse-DNS, unique to your app; stor
 version = "0.1.0"
 build = 1                    # raise for every store upload (giode bump)
 icon = "assets/icon.png"
+splash_color = "#09090D"     # launch background, the dark theme's
+splash_color_light = "#F6F6F9"  # the light theme's
 package = "."
 platforms = ["linux", "windows", "macos"]   # what giode build builds with no target named
-publisher = "mehran9675"
+publisher = "xmhrnx"
 description = "Upscale images, video and audio with AI engines that run on your computer."
-website = "https://github.com/mehran9675/touchup"
+website = "https://xmhrnx.github.io/touchup/"
 
 [macos]
 min_os = 11
@@ -34,7 +36,7 @@ arch = "amd64"
 
 [linux]
 categories = ["AudioVideo", "Graphics"]     # freedesktop menu categories
-# license = "MIT"            # SPDX, for .deb, .rpm and AppStream
+license = "Apache-2.0"       # SPDX, for .deb, .rpm and AppStream
 
 # "Open with TouchUp" for the media it upscales.
 [[file_types]]
