@@ -4,7 +4,7 @@
 
 <p align="center">Upscale images, video and audio with open-source AI engines that run on your own computer.</p>
 
-TouchUp is a desktop app built with [giode](https://github.com/mehran9675/giode). It doesn't
+TouchUp is a desktop app built with [giode](https://github.com/xmhrnx/giode). It doesn't
 upscale anything itself: it installs and drives command-line engines such as Real-ESRGAN or
 AudioSR, and takes care of everything around them. That means extracting and re-encoding video
 frames, keeping the original soundtrack, converting audio, running jobs in a queue and showing
@@ -174,11 +174,11 @@ container (PCM or Vorbis in MP4, say), the result is MKV instead. Settings can c
 ## Build
 
 TouchUp needs Go 1.26 or later. Build and run it with the
-[giode CLI](https://github.com/mehran9675/giode-cli), which builds against giode's patched Gio
+[giode CLI](https://github.com/xmhrnx/giode-cli), which builds against giode's patched Gio
 (file drop on Linux, among other things):
 
 ```sh
-go install github.com/mehran9675/giode-cli/cmd/giode@latest
+go install github.com/xmhrnx/giode-cli/cmd/giode@v0.1.35-alpha.1
 giode doctor                         # what this computer still needs
 giode run                            # run it
 giode build linux deb appimage       # or windows-installer, dmg, ...
