@@ -90,7 +90,7 @@ func NewSettings(s *store.Store) *Settings {
 		}
 	}
 	p.language = giode.Input.Select(giode.Styles{
-		Width: 260, Background: theme.Raised(), Color: theme.Text, BorderColor: theme.Border, BorderRadius: 10, FontSize: 13,
+		Width: 300, Background: theme.Raised(), Color: theme.Text, BorderColor: theme.Border, BorderRadius: 10, FontSize: 13,
 	}, languages...).OnChange(func(i int) {
 		code := ""
 		if i > 0 {
@@ -206,14 +206,14 @@ func (p *Settings) content() giode.Element {
 		),
 		section(tr.T("Output"),
 			components.SettingRow(tr.T("Save results to"), tr.T("Leave empty to save next to each original."), p.output),
-			components.SettingRow(tr.T("Image format"), tr.T("PNG keeps every detail; WebP and JPEG are smaller."), seg(p.image, 260)),
-			components.SettingRow(tr.T("Video codec"), tr.T("H.265 is smaller; ProRes is for editing."), seg(p.codec, 260)),
+			components.SettingRow(tr.T("Image format"), tr.T("PNG keeps every detail; WebP and JPEG are smaller."), seg(p.image, 300)),
+			components.SettingRow(tr.T("Video codec"), tr.T("H.265 is smaller; ProRes is for editing."), seg(p.codec, 300)),
 			components.SettingRow(tr.T("Video quality"), fmt.Sprintf("CRF %d · %s", st.VideoQuality, qualityWord(st.VideoQuality)),
-				giode.Box(giode.Styles{Width: 260}, p.quality)),
+				giode.Box(giode.Styles{Width: 300}, p.quality)),
 			components.SettingRow(tr.T("Sound in videos"),
 				tr.T("Copying keeps the original track untouched; a track MP4 can't hold makes the video MKV. AAC converts it at 256 kbps for players that need it."),
-				seg(p.videoAudio, 260)),
-			components.SettingRow(tr.T("Audio format"), tr.T("WAV and FLAC are lossless; MP3 is encoded at 320 kbps."), seg(p.audio, 260)),
+				seg(p.videoAudio, 300)),
+			components.SettingRow(tr.T("Audio format"), tr.T("WAV and FLAC are lossless; MP3 is encoded at 320 kbps."), seg(p.audio, 300)),
 		),
 		section(tr.T("Hardware"),
 			components.SettingRow(tr.T("GPU"), tr.T("Which graphics card engines use, when there's more than one."), seg(p.gpu, 340)),
