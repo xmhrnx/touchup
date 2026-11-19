@@ -137,6 +137,7 @@
 
   /* Sections */
   section { padding: 72px 0; }
+  section[id] { scroll-margin-top: 64px; }
   .kicker { font: 500 12.5px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--violet); margin: 0 0 14px; }
   h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.08; letter-spacing: -.035em; margin: 0 0 16px; font-weight: 800; }
   .sub { color: var(--muted); font-size: 17px; max-width: 640px; margin: 0; }
@@ -204,6 +205,13 @@
   .req { margin-top: 26px; font-size: 13.5px; color: var(--muted); }
   .req code, p code { font-family: var(--mono); font-size: .9em; background: var(--raised); padding: 2px 6px; border-radius: 6px; }
 
+  /* Privacy */
+  .policy { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin-top: 40px; background: var(--border);
+    border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+  .policy .feat p + p { margin-top: 10px; }
+  .policy a { color: var(--text); }
+  .updated { margin-top: 18px; font: 500 12.5px/1.5 var(--mono); color: var(--muted); }
+
   footer { padding: 40px 0 56px; color: var(--muted); font-size: 14px; }
   footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 28px; }
   footer a { text-decoration: none; }
@@ -220,7 +228,7 @@
   @media (max-width: 720px) {
     nav.top .links { display: none; }
     nav.top .gh { margin-left: auto; }
-    .trio, .features { grid-template-columns: 1fr; }
+    .trio, .features, .policy { grid-template-columns: 1fr; }
     section { padding: 56px 0; }
     .download { padding: 48px 20px; }
     .os a { min-width: 0; flex: 1 1 140px; }
@@ -402,6 +410,41 @@
   </div>
 </section>
 
+<section id="privacy">
+  <div class="wrap">
+    <p class="kicker">Privacy</p>
+    <h2>Your media stays on your computer.</h2>
+    <p class="sub">This is TouchUp's privacy policy, for every version: the downloads on GitHub and the Microsoft Store. TouchUp has no account, no analytics, no ads and no crash reporting, and its developer runs no server it talks to.</p>
+    <div class="policy">
+      <div class="feat">
+        <h3><b></b>What TouchUp collects</h3>
+        <p>Nothing. TouchUp sends its developer no data of any kind, and it doesn't track you across apps or websites.</p>
+      </div>
+      <div class="feat">
+        <h3><b></b>Your images, video and audio</h3>
+        <p>They are never uploaded. The engines run on your own computer, and results are written next to the original or to the output folder you choose. Frames and clips in progress go to a work folder in the system's temporary folder, which TouchUp empties when it starts and quits.</p>
+      </div>
+      <div class="feat">
+        <h3><b></b>What's kept on your computer</h3>
+        <p>Your settings, the engines and models you install, and engines you add yourself, in TouchUp's own folder (<code>%LOCALAPPDATA%\TouchUp</code>, <code>~/Library/Application Support/TouchUp</code> or <code>~/.local/share/TouchUp</code>). Deleting that folder removes them; uninstalling the Microsoft Store version removes them too.</p>
+      </div>
+      <div class="feat">
+        <h3><b></b>The internet, only when you install</h3>
+        <p>When you install an engine or a model, TouchUp downloads it from where its authors publish it: GitHub, Hugging Face, the Python Package Index, PyTorch's download server and, for one engine, OpenMMLab's. Python engines also get a standalone Python from GitHub. Those sites see each request as they see any download (your IP address, and what pip reports about your system and Python) under their own privacy policies. TouchUp uses no network while it upscales, though some engines fetch their own model files from their authors the first time they run.</p>
+      </div>
+      <div class="feat">
+        <h3><b></b>Engines are their own programs</h3>
+        <p>The engines are open-source programs by other authors, and engines you add yourself can be anything. TouchUp passes them only the files you ask it to process. Links on an engine's card open its page in your browser.</p>
+      </div>
+      <div class="feat">
+        <h3><b></b>Error reports are yours to send</h3>
+        <p>Copy on an error puts a report on your clipboard: what failed, TouchUp's version, your system, GPU setting and Python, and what the engine printed. Nothing is sent unless you paste it somewhere, such as a <a href="https://github.com/xmhrnx/touchup/issues">GitHub issue</a>.</p>
+      </div>
+    </div>
+    <p class="updated">Questions: open an issue on <a href="https://github.com/xmhrnx/touchup/issues" style="color: inherit">GitHub</a>. Last updated November 19, 2026. Changes are published here and in the source repository.</p>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <span>TouchUp is licensed under the <a href="https://github.com/xmhrnx/touchup/blob/main/LICENSE"><u>Apache License 2.0</u></a>. Built with <a href="https://github.com/xmhrnx/giode"><u>Giode</u></a>.</span>
@@ -409,6 +452,7 @@
       <a href="https://github.com/xmhrnx/touchup">Source</a>
       <a href="https://github.com/xmhrnx/touchup/releases">Releases</a>
       <a href="https://github.com/xmhrnx/touchup/issues">Issues</a>
+      <a href="#privacy">Privacy</a>
     </span>
   </div>
 </footer>
