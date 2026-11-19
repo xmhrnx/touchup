@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TouchUp · Local AI upscaling for images, video and audio</title>
+<meta name="description" content="TouchUp upscales images, video and audio with open-source AI engines that run on your own computer. Nothing is uploaded.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#09090D" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F6F6F9" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="TouchUp">
+<meta property="og:description" content="Upscale images, video and audio with open-source AI engines that run on your own computer.">
+<meta property="og:image" content="img/studio-compare.webp">
+<link rel="icon" type="image/png" href="img/icon-256.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090D;
+    --surface: #131319;
+    --raised: #1B1B23;
+    --border: #24242E;
+    --text: #F4F4F7;
+    --muted: #8A8A9B;
+    --violet: #7C5CFF;
+    --pink: #EC4899;
+    --amber: #FBBF24;
+    --cyan: #22D3EE;
+    --green: #34D399;
+    --blue: #60A5FA;
+    --grad: linear-gradient(120deg, #7C5CFF 0%, #B04FE0 45%, #EC4899 80%, #F59E6B 100%);
+    --glow: rgba(124, 92, 255, .28);
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #F6F6F9;
+      --surface: #FFFFFF;
+      --raised: #EFEFF4;
+      --border: #E3E3EA;
+      --text: #14141B;
+      --muted: #6B6B7D;
+      --violet: #6D4AFF;
+      --pink: #DB2777;
+      --green: #059669;
+      --blue: #2563EB;
+      --amber: #D97706;
+      --cyan: #0891B2;
+      --glow: rgba(109, 74, 255, .18);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  img { max-width: 100%; height: auto; display: block; }
+  a { color: inherit; }
+  .wrap { width: min(1160px, 100% - 40px); margin-inline: auto; }
+
+  /* Pixel grid backdrop: coarse on the left, fading out to smooth on the right. */
+  .backdrop {
+    position: absolute; inset: 0 0 auto 0; height: 900px; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(600px 400px at 78% 22%, var(--glow), transparent 70%),
+      radial-gradient(500px 360px at 10% 60%, rgba(236, 72, 153, .12), transparent 70%);
+  }
+  .backdrop::before {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(to right, var(--border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,.5) 35%, transparent 55%), linear-gradient(to bottom, #000 40%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(100deg, #000 0%, rgba(0,0,0,.5) 35%, transparent 55%), linear-gradient(to bottom, #000 40%, transparent);
+    mask-composite: intersect;
+    opacity: .7;
+  }
+
+  /* Nav */
+  nav.top { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    background: color-mix(in srgb, var(--bg) 72%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+  nav.top .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; letter-spacing: -.01em; font-size: 17px; }
+  .brand img { width: 30px; height: 30px; }
+  nav.top .links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; color: var(--muted); }
+  nav.top .links a { text-decoration: none; transition: color .15s; }
+  nav.top .links a:hover { color: var(--text); }
+  .gh { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; text-decoration: none;
+    padding: 7px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+  .gh:hover { border-color: color-mix(in srgb, var(--violet) 50%, var(--border)); }
+  .gh svg { width: 16px; height: 16px; }
+
+  /* Hero */
+  .hero { padding: 84px 0 40px; display: grid; grid-template-columns: 1.08fr .92fr; gap: 56px; align-items: center; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font: 500 12.5px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+    color: var(--muted); padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+  .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
+  h1 { font-size: clamp(40px, 6.4vw, 74px); line-height: 1.02; letter-spacing: -.045em; font-weight: 800; margin: 22px 0 22px; }
+  h1 .px { font-family: var(--mono); font-weight: 500; letter-spacing: -.02em; color: var(--muted); }
+  h1 .sharp { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: clamp(17px, 1.6vw, 19px); color: var(--muted); max-width: 560px; margin: 0 0 32px; }
+  .lede strong { color: var(--text); font-weight: 600; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 13px 22px; border-radius: 12px; font-weight: 600; font-size: 15px; text-decoration: none; transition: transform .15s, box-shadow .15s; }
+  .btn svg { width: 18px; height: 18px; }
+  .btn.primary { background: var(--grad); color: #fff; box-shadow: 0 10px 30px -8px rgba(176, 79, 224, .6); }
+  .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 14px 36px -8px rgba(176, 79, 224, .75); }
+  .btn.ghost { border: 1px solid var(--border); background: var(--surface); }
+  .btn.ghost:hover { transform: translateY(-1px); }
+  .platforms { margin-top: 18px; font-size: 13px; color: var(--muted); }
+
+  /* Before/after compare, the icon's own idea. */
+  .compare { position: relative; aspect-ratio: 1; width: min(100%, 480px); justify-self: center;
+    touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; filter: drop-shadow(0 40px 60px var(--glow)); }
+  .compare:focus-visible { outline: 2px solid var(--violet); outline-offset: 6px; border-radius: 24px; }
+  .compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  .compare .before { image-rendering: pixelated; clip-path: inset(0 calc(100% - var(--split, 50%)) 0 0); }
+  .compare .after { clip-path: inset(0 0 0 var(--split, 50%)); }
+  .compare .rule { position: absolute; top: 15%; bottom: 15%; left: var(--split, 50%); width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 18px rgba(255,255,255,.4); pointer-events: none; }
+  .compare .knob { position: absolute; top: 50%; left: var(--split, 50%); width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+    background: #fff; display: grid; place-items: center; box-shadow: 0 6px 20px rgba(0,0,0,.35); pointer-events: none; }
+  .compare .knob svg { width: 26px; height: 26px; color: #7C5CFF; }
+  .compare .tag { position: absolute; top: calc(7% + 18px); font: 600 12px/1 var(--sans); padding: 7px 11px; border-radius: 999px; pointer-events: none; }
+  .compare .tag.l { left: calc(7% + 18px); background: rgba(0,0,0,.55); color: #fff; }
+  .compare .tag.r { right: calc(7% + 18px); background: var(--grad); color: #fff; }
+  .compare-hint { text-align: center; font-size: 12.5px; color: var(--muted); margin-top: 14px; font-family: var(--mono); }
+
+  /* Sections */
+  section { padding: 72px 0; }
+  .kicker { font: 500 12.5px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--violet); margin: 0 0 14px; }
+  h2 { font-size: clamp(30px, 4vw, 46px); line-height: 1.08; letter-spacing: -.035em; margin: 0 0 16px; font-weight: 800; }
+  .sub { color: var(--muted); font-size: 17px; max-width: 640px; margin: 0; }
+
+  .window { margin-top: 40px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: var(--surface);
+    box-shadow: 0 50px 100px -40px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.02); }
+  .window .bar { display: flex; gap: 7px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .window .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--border); }
+  .caption { color: var(--muted); font-size: 14px; margin-top: 14px; text-align: center; }
+
+  /* Media trio */
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 40px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 26px; position: relative; overflow: hidden; }
+  .card h3 { margin: 16px 0 8px; font-size: 20px; letter-spacing: -.02em; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .card .fmt { margin-top: 16px; font: 500 12.5px/1.5 var(--mono); color: var(--muted); }
+  .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; }
+  .ico svg { width: 22px; height: 22px; }
+  .ico.img { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue); }
+  .ico.vid { background: color-mix(in srgb, var(--pink) 16%, transparent); color: var(--pink); }
+  .ico.aud { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+
+  /* Features */
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 40px; background: var(--border);
+    border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+  .feat { background: var(--bg); padding: 26px 26px 28px; }
+  .feat h3 { margin: 0 0 8px; font-size: 16.5px; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+  .feat h3 b { width: 8px; height: 8px; border-radius: 2px; background: var(--grad); flex: none; }
+  .feat p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+  /* Engines */
+  .engines { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; margin-top: 40px; }
+  .elist { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .elist li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .elist .n { font-weight: 600; font-size: 15px; }
+  .elist .d { grid-column: 1 / -1; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+  .chips { display: flex; gap: 5px; }
+  .chip { font: 500 11px/1 var(--mono); padding: 5px 7px; border-radius: 6px; }
+  .chip.i { background: color-mix(in srgb, var(--blue) 15%, transparent); color: var(--blue); }
+  .chip.v { background: color-mix(in srgb, var(--pink) 15%, transparent); color: var(--pink); }
+  .chip.a { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+  .engines .shot { position: sticky; top: 90px; }
+  .engines .shot .window { margin-top: 0; }
+  .more { margin-top: 14px; font-size: 14px; color: var(--muted); }
+
+  /* Local */
+  .local { display: grid; grid-template-columns: .9fr 1.1fr; gap: 48px; align-items: center; }
+  .pipe { font: 13px/1.7 var(--mono); background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; overflow-x: auto; }
+  .pipe .s { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+  .pipe .s + .s { border-top: 1px dashed var(--border); }
+  .pipe .k { color: var(--violet); min-width: 22px; }
+  .pipe .t { color: var(--text); }
+  .pipe .m { color: var(--muted); }
+
+  /* Download */
+  .download { text-align: center; padding: 64px 28px; border-radius: 28px; border: 1px solid var(--border); position: relative; overflow: hidden;
+    background: radial-gradient(500px 260px at 50% 0%, var(--glow), transparent 70%), var(--surface); }
+  .download img.icon { width: 96px; height: 96px; margin: 0 auto 20px; filter: drop-shadow(0 18px 30px rgba(124, 92, 255, .35)); }
+  .download .sub { margin: 0 auto 30px; }
+  .os { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+  .os a { display: inline-flex; align-items: center; gap: 10px; min-width: 170px; justify-content: center; padding: 14px 20px; border-radius: 14px;
+    border: 1px solid var(--border); background: var(--bg); text-decoration: none; font-weight: 600; transition: border-color .15s, transform .15s; }
+  .os a:hover { border-color: var(--violet); transform: translateY(-1px); }
+  .os svg { width: 20px; height: 20px; }
+  .req { margin-top: 26px; font-size: 13.5px; color: var(--muted); }
+  .req code, p code { font-family: var(--mono); font-size: .9em; background: var(--raised); padding: 2px 6px; border-radius: 6px; }
+
+  footer { padding: 40px 0 56px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 28px; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--text); }
+  footer .f { display: flex; gap: 22px; flex-wrap: wrap; }
+
+  @media (max-width: 960px) {
+    .hero { grid-template-columns: 1fr; gap: 44px; padding-top: 56px; }
+    .compare { width: min(100%, 400px); }
+    .features { grid-template-columns: 1fr 1fr; }
+    .engines, .local { grid-template-columns: 1fr; gap: 32px; }
+    .engines .shot { position: static; }
+  }
+  @media (max-width: 720px) {
+    nav.top .links { display: none; }
+    nav.top .gh { margin-left: auto; }
+    .trio, .features { grid-template-columns: 1fr; }
+    section { padding: 56px 0; }
+    .download { padding: 48px 20px; }
+    .os a { min-width: 0; flex: 1 1 140px; }
+  }
+  @media (max-width: 400px) {
+    .wrap { width: calc(100% - 32px); }
+    .btn { flex: 1 1 auto; justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"></div>
+
+<nav class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="img/icon-256.png" alt="">TouchUp</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#engines">Engines</a>
+      <a href="#local">How it works</a>
+      <a href="#download">Download</a>
+    </div>
+    <a class="gh" href="https://github.com/xmhrnx/touchup">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5Z"/></svg>
+      Source
+    </a>
+  </div>
+</nav>
+
+<header class="wrap hero">
+  <div>
+    <span class="eyebrow"><i></i>Local AI upscaling</span>
+    <h1><span class="px">Upscale</span> images, video and audio <span class="sharp">on your own computer.</span></h1>
+    <p class="lede">TouchUp installs and drives open-source engines like <strong>Real-ESRGAN</strong>, <strong>SeedVR2</strong> and <strong>AudioSR</strong>, and takes care of everything around them: frames, soundtracks, queues and before/after comparisons. <strong>Nothing is uploaded.</strong></p>
+    <div class="cta">
+      <a class="btn primary" href="#download">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+        Download TouchUp
+      </a>
+      <a class="btn ghost" href="https://github.com/xmhrnx/touchup">View the source</a>
+    </div>
+    <p class="platforms">For Windows, macOS and Linux · Free and open source, Apache 2.0</p>
+  </div>
+  <div>
+    <div class="compare" id="compare" role="slider" aria-label="Before and after" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
+      <img class="before" src="img/icon-pixel.png" alt="">
+      <img class="after" src="img/icon-256.png" alt="TouchUp's icon, half pixelated and half smooth">
+      <div class="rule"></div>
+      <div class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6-6 6 6 6"/><path d="m15 6 6 6-6 6"/></svg></div>
+      <span class="tag l">Original</span>
+      <span class="tag r">Upscaled</span>
+    </div>
+    <p class="compare-hint">drag to compare</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">The studio</p>
+    <h2>See the result before you commit.</h2>
+    <p class="sub">Scrub to any moment of a video and upscale just that frame. A split view with zoom and pan puts the original next to the result, so you pick the engine and settings on one frame, not on an hour of footage.</p>
+    <div class="window">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <picture>
+        <source srcset="img/studio-light.webp" media="(prefers-color-scheme: light)">
+        <img src="img/studio-compare.webp" width="1360" height="860" alt="TouchUp's studio: a video frame split into the original and the upscaled result, with the engine list on the right and the timeline below">
+      </picture>
+    </div>
+
+    <div class="trio">
+      <div class="card">
+        <div class="ico img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg></div>
+        <h3>Images</h3>
+        <p>Photos, drawings and anime art, by 2x, 3x or 4x. Images go straight to the queue, with no preview step.</p>
+        <div class="fmt">PNG · JPEG · WebP · BMP · TIFF</div>
+      </div>
+      <div class="card">
+        <div class="ico vid"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18M3 7.5h4M3 12h18M3 16.5h4M17 3v18M17 7.5h4M17 16.5h4"/></svg></div>
+        <h3>Video</h3>
+        <p>To 720p, 1080p, 1440p or 4K. Frames stream through the engine a segment at a time, and the original soundtrack is kept.</p>
+        <div class="fmt">MP4 · MOV · MKV · WebM → H.264 · H.265 · ProRes</div>
+      </div>
+      <div class="card">
+        <div class="ico aud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"/></svg></div>
+        <h3>Audio</h3>
+        <p>Choose 5–30 seconds on the waveform, enhance only that, then play both versions and compare their spectrograms.</p>
+        <div class="fmt">WAV · FLAC · MP3 · M4A · OGG → WAV · FLAC · MP3</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <p class="kicker">Features</p>
+    <h2>Everything around the engine.</h2>
+    <p class="sub">TouchUp doesn't upscale anything itself. It does the work that makes command-line upscalers pleasant to use.</p>
+    <div class="features">
+      <div class="feat"><h3><b></b>Any engine</h3><p>A built-in catalog installs with one click. Add any other command-line upscaler from a form or a JSON manifest.</p></div>
+      <div class="feat"><h3><b></b>Models one by one</h3><p>Engines with large weights list their models; download only the ones you want, with checksums verified.</p></div>
+      <div class="feat"><h3><b></b>A scale or a resolution</h3><p>2x, 3x or 4x, or 720p to 4K by the short side, so portrait video works too. Results are resized exactly with Lanczos.</p></div>
+      <div class="feat"><h3><b></b>A queue you can watch</h3><p>Jobs run one at a time with live progress, the engine's latest output, cancel and retry, and a warning when an engine goes quiet.</p></div>
+      <div class="feat"><h3><b></b>Find the fastest</h3><p>Times an engine's settings on two seconds of your video, keeps each that's faster and saves the winners.</p></div>
+      <div class="feat"><h3><b></b>GPU memory stays on the GPU</h3><p>Python engines stop with "out of memory" instead of spilling into system memory, which is often ten times slower. One setting turns spilling back on.</p></div>
+      <div class="feat"><h3><b></b>Filters in plain Go</h3><p>Deinterlace, deblock, denoise and deband before the engine; sharpen, brightness, contrast, warmth, saturation and film grain after.</p></div>
+      <div class="feat"><h3><b></b>Errors you can report</h3><p>Every failure has a Copy button: what failed, the version, system, GPU setting, Python and everything the engine printed.</p></div>
+      <div class="feat"><h3><b></b>26 languages</h3><p>From Bulgarian to Ukrainian, each with its own number formats, plus dark and light themes and "Open with TouchUp" on every desktop.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="engines">
+  <div class="wrap">
+    <p class="kicker">Engines</p>
+    <h2>The strongest open models, one click away.</h2>
+    <p class="sub">Each engine installs into its own folder, Python engines into a private environment with a Python TouchUp downloads for them. Each keeps its own license, shown on its card.</p>
+    <div class="engines">
+      <ul class="elist">
+        <li><span class="n">Classic</span><span class="chips"><span class="chip i">IMG</span><span class="chip v">VID</span></span><span class="d">Built in. An edge-adaptive scaler and contrast-adaptive sharpening, instant on the CPU.</span></li>
+        <li><span class="n">RTX Video</span><span class="chips"><span class="chip i">IMG</span><span class="chip v">VID</span></span><span class="d">Built in on Windows. NVIDIA's Video Super Resolution from the graphics driver.</span></li>
+        <li><span class="n">SeedVR2</span><span class="chips"><span class="chip v">VID</span><span class="chip i">IMG</span></span><span class="d">One-step diffusion restoration with real, steady texture.</span></li>
+        <li><span class="n">FlashVSR</span><span class="chips"><span class="chip v">VID</span></span><span class="d">Streaming diffusion with detail like SeedVR2's at several times the speed.</span></li>
+        <li><span class="n">RealBasicVSR</span><span class="chips"><span class="chip v">VID</span></span><span class="d">Follows motion and merges neighboring frames.</span></li>
+        <li><span class="n">PyTorch SR</span><span class="chips"><span class="chip i">IMG</span><span class="chip v">VID</span></span><span class="d">13 community models through spandrel: DAT2, RealPLKSR, DRCT-L, ATD, SwinIR-L and more.</span></li>
+        <li><span class="n">Real-ESRGAN · Real-CUGAN · waifu2x · RealSR</span><span class="chips"><span class="chip i">IMG</span><span class="chip v">VID</span></span><span class="d">Fast ncnn builds on any Vulkan GPU.</span></li>
+        <li><span class="n">Apollo · AudioSR</span><span class="chips"><span class="chip a">AUD</span></span><span class="d">Music damaged by compression; bandwidth extension to 48 kHz.</span></li>
+        <li><span class="n">VoiceFixer · Resemble Enhance · DeepFilterNet</span><span class="chips"><span class="chip a">AUD</span></span><span class="d">Restoring, enhancing and denoising speech.</span></li>
+      </ul>
+      <div class="shot">
+        <div class="window">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <img src="img/engines.webp" width="1360" height="860" alt="TouchUp's Engines page: cards for Apollo, AudioSR, Classic, FlashVSR, PyTorch SR and RealBasicVSR with install buttons">
+        </div>
+        <p class="more">Missing one? <strong>Add custom engine</strong> takes a program and its arguments with placeholders like <code>{input}</code>, <code>{output}</code> and <code>{scale}</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="local">
+  <div class="wrap local">
+    <div>
+      <p class="kicker">How it works</p>
+      <h2>Long videos, small work folder.</h2>
+      <p class="sub">Videos go through image engines a segment at a time, straight from the decoder to the encoder, so the work folder never holds more than a few hundred megabytes, however long the video. Everything runs on this computer with the engines you install.</p>
+    </div>
+    <div class="pipe" aria-label="The video pipeline">
+      <div class="s"><span class="k">01</span><span class="t">ffmpeg</span><span class="m">decodes frames into a pipe</span></div>
+      <div class="s"><span class="k">02</span><span class="t">filters</span><span class="m">clean up the source in memory</span></div>
+      <div class="s"><span class="k">03</span><span class="t">engine</span><span class="m">upscales a few dozen frames at once</span></div>
+      <div class="s"><span class="k">04</span><span class="t">encoder</span><span class="m">writes them, with the original sound</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <div class="download">
+      <img class="icon" src="img/icon-256.png" alt="">
+      <h2>Get TouchUp</h2>
+      <p class="sub">Download the latest release for your computer.</p>
+      <div class="os">
+        <a href="https://github.com/xmhrnx/touchup/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.1 10.4 4v7.2H3V5.1Zm0 13.8 7.4 1.1v-7.1H3v6Zm8.2 1.2L21 21.5v-8.6h-9.8v7.2Zm0-16.2v7.3H21V2.5l-9.8 1.4Z"/></svg>
+          Windows
+        </a>
+        <a href="https://github.com/xmhrnx/touchup/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2.1-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4.1ZM13.9 4.9c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5Z"/></svg>
+          macOS
+        </a>
+        <a href="https://github.com/xmhrnx/touchup/releases/latest">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c-2 0-3.3 1.6-3.3 4 0 1.2.2 2 .1 2.8-.1 1-1.3 2.2-2.2 3.6-1 1.6-1.6 3.5-1 4.9-.7.4-1.4 1.1-1.2 1.9.3.9 1.6.8 2.6 1.3 1 .5 2 .8 2.8.2.5-.4.6-.8 1.6-.8h1.2c1 0 1.1.4 1.6.8.8.6 1.8.3 2.8-.2 1-.5 2.3-.4 2.6-1.3.2-.8-.5-1.5-1.2-1.9.6-1.4 0-3.3-1-4.9-.9-1.4-2.1-2.6-2.2-3.6-.1-.8.1-1.6.1-2.8 0-2.4-1.3-4-3.3-4Zm-1.2 3.5c.4 0 .6.5.6 1s-.2.8-.5.8-.6-.3-.6-.8.2-1 .5-1Zm2.4 0c.3 0 .5.5.5 1s-.3.8-.6.8-.5-.3-.5-.8.2-1 .6-1ZM12 8c.8 0 1.8.4 1.8.8 0 .3-1 1-1.8 1s-1.8-.7-1.8-1c0-.4 1-.8 1.8-.8Z"/></svg>
+          Linux
+        </a>
+      </div>
+      <p class="req">Needs <a href="https://ffmpeg.org">FFmpeg</a> with <code>ffprobe</code>, and a Vulkan GPU for the ncnn engines. Python engines get their own Python; an NVIDIA GPU is strongly recommended for diffusion models.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>TouchUp is licensed under the <a href="https://github.com/xmhrnx/touchup/blob/main/LICENSE"><u>Apache License 2.0</u></a>. Built with <a href="https://github.com/xmhrnx/giode"><u>Giode</u></a>.</span>
+    <span class="f">
+      <a href="https://github.com/xmhrnx/touchup">Source</a>
+      <a href="https://github.com/xmhrnx/touchup/releases">Releases</a>
+      <a href="https://github.com/xmhrnx/touchup/issues">Issues</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var box = document.getElementById('compare');
+    function set(p) {
+      p = Math.max(4, Math.min(96, p));
+      box.style.setProperty('--split', p + '%');
+      box.setAttribute('aria-valuenow', Math.round(p));
+    }
+    function at(e) {
+      var r = box.getBoundingClientRect();
+      set((e.clientX - r.left) / r.width * 100);
+    }
+    var down = false;
+    box.addEventListener('pointerdown', function (e) { down = true; box.setPointerCapture(e.pointerId); at(e); });
+    box.addEventListener('pointermove', function (e) { if (down) at(e); });
+    box.addEventListener('pointerup', function () { down = false; });
+    box.addEventListener('pointercancel', function () { down = false; });
+    box.addEventListener('keydown', function (e) {
+      var v = parseFloat(box.getAttribute('aria-valuenow'));
+      if (e.key === 'ArrowLeft') { set(v - 5); e.preventDefault(); }
+      if (e.key === 'ArrowRight') { set(v + 5); e.preventDefault(); }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -4,6 +4,8 @@
 
 <p align="center">Upscale images, video and audio with open-source AI engines that run on your own computer.</p>
 
+<p align="center"><a href="https://xmhrnx.github.io/touchup/">Website</a> · <a href="https://github.com/xmhrnx/touchup/releases/latest">Download</a></p>
+
 TouchUp is a desktop app built with [giode](https://github.com/xmhrnx/giode). It doesn't
 upscale anything itself: it installs and drives command-line engines such as Real-ESRGAN or
 AudioSR, and takes care of everything around them. That means extracting and re-encoding video
