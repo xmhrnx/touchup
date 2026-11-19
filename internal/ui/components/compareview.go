@@ -12,8 +12,8 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 
-	"github.com/mehran9675/giode"
-	"github.com/mehran9675/giode/components/iconbutton"
+	"github.com/xmhrnx/giode"
+	"github.com/xmhrnx/giode/components/iconbutton"
 
 	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/draw"

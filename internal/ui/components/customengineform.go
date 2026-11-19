@@ -7,12 +7,12 @@ import (
 
 	"gioui.org/layout"
 
-	"github.com/mehran9675/giode"
-	"github.com/mehran9675/giode/components/input"
-	"github.com/mehran9675/giode/components/scroll"
-	"github.com/mehran9675/giode/components/segmented"
-	"github.com/mehran9675/giode/components/toggle"
-	"github.com/mehran9675/giode/styles/properties"
+	"github.com/xmhrnx/giode"
+	"github.com/xmhrnx/giode/components/input"
+	"github.com/xmhrnx/giode/components/scroll"
+	"github.com/xmhrnx/giode/components/segmented"
+	"github.com/xmhrnx/giode/components/toggle"
+	"github.com/xmhrnx/giode/styles/properties"
 
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/tr"

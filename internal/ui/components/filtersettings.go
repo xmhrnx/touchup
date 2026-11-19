@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mehran9675/giode"
-	"github.com/mehran9675/giode/components/dialog"
-	"github.com/mehran9675/giode/components/dropdown"
-	"github.com/mehran9675/giode/components/scroll"
-	"github.com/mehran9675/giode/components/slider"
-	"github.com/mehran9675/giode/components/toggle"
+	"github.com/xmhrnx/giode"
+	"github.com/xmhrnx/giode/components/dialog"
+	"github.com/xmhrnx/giode/components/dropdown"
+	"github.com/xmhrnx/giode/components/scroll"
+	"github.com/xmhrnx/giode/components/slider"
+	"github.com/xmhrnx/giode/components/toggle"
 
 	"github.com/mehran9675/touchup/internal/filters"
 	"github.com/mehran9675/touchup/internal/tr"

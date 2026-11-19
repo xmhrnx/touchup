@@ -4,8 +4,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/mehran9675/giode"
-	"github.com/mehran9675/giode/components/titlebar"
+	"github.com/xmhrnx/giode"
+	"github.com/xmhrnx/giode/components/titlebar"
 
 	"github.com/mehran9675/touchup/internal/ui/components"
 	"github.com/mehran9675/touchup/internal/ui/store"

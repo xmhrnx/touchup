@@ -5,7 +5,7 @@
 // go run ./tools/i18n to list the messages and check the translations.
 package tr
 
-import "github.com/mehran9675/giode/i18n"
+import "github.com/xmhrnx/giode/i18n"
 
 // T translates msg, filling its {placeholders} from args: name, value
 // pairs or a single map.

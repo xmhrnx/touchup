@@ -1,7 +1,7 @@
 package pages
 
 import (
-	"github.com/mehran9675/giode"
+	"github.com/xmhrnx/giode"
 
 	"github.com/mehran9675/touchup/internal/media"
 	"github.com/mehran9675/touchup/internal/tr"

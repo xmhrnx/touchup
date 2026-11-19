@@ -7,8 +7,8 @@ import (
 	"gioui.org/font/gofont"
 	"gioui.org/font/opentype"
 
-	"github.com/mehran9675/giode"
 	"github.com/mehran9675/touchup/assets"
+	"github.com/xmhrnx/giode"
 )
 
 // Font families.

@@ -1,6 +1,6 @@
 package components
 
-import "github.com/mehran9675/giode"
+import "github.com/xmhrnx/giode"
 
 // clickState is the persistent part of a Clickable.
 type clickState struct {

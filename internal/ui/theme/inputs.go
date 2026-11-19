@@ -1,9 +1,9 @@
 package theme
 
 import (
-	"github.com/mehran9675/giode"
-	"github.com/mehran9675/giode/components/input"
-	"github.com/mehran9675/giode/components/segmented"
+	"github.com/xmhrnx/giode"
+	"github.com/xmhrnx/giode/components/input"
+	"github.com/xmhrnx/giode/components/segmented"
 )
 
 // Field is a text field in TouchUp's style.

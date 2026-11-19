@@ -6,7 +6,7 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 
-	"github.com/mehran9675/giode"
+	"github.com/xmhrnx/giode"
 
 	"github.com/mehran9675/touchup/internal/tr"
 	"github.com/mehran9675/touchup/internal/ui/format"

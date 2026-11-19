@@ -3,7 +3,7 @@ package tr
 import (
 	"strings"
 
-	"github.com/mehran9675/giode/i18n"
+	"github.com/xmhrnx/giode/i18n"
 )
 
 // Language is a language TouchUp is translated into.

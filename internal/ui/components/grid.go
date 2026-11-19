@@ -7,9 +7,9 @@ import (
 	"gioui.org/layout"
 	"gioui.org/unit"
 
-	"github.com/mehran9675/giode"
-	"github.com/mehran9675/giode/elements"
-	"github.com/mehran9675/giode/styles/properties"
+	"github.com/xmhrnx/giode"
+	"github.com/xmhrnx/giode/elements"
+	"github.com/xmhrnx/giode/styles/properties"
 )
 
 // Grid lays cells out in as many equal columns as fit at least minWidth

@@ -1,6 +1,6 @@
 package theme
 
-import "github.com/mehran9675/giode"
+import "github.com/xmhrnx/giode"
 
 // Text styles. Each returns fresh Styles, so callers can set more fields.
 

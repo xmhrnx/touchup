@@ -12,7 +12,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 
-	"github.com/mehran9675/giode"
+	"github.com/xmhrnx/giode"
 
 	"github.com/mehran9675/touchup/internal/ui/draw"
 	"github.com/mehran9675/touchup/internal/ui/theme"

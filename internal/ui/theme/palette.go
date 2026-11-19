@@ -2,7 +2,7 @@
 // shared styles components build on.
 package theme
 
-import "github.com/mehran9675/giode"
+import "github.com/xmhrnx/giode"
 
 // Brand colors, the same in both modes.
 const (

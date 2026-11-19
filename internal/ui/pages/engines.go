@@ -3,10 +3,10 @@ package pages
 import (
 	"context"
 
-	"github.com/mehran9675/giode"
-	"github.com/mehran9675/giode/components/dialog"
-	"github.com/mehran9675/giode/components/scroll"
-	"github.com/mehran9675/giode/components/segmented"
+	"github.com/xmhrnx/giode"
+	"github.com/xmhrnx/giode/components/dialog"
+	"github.com/xmhrnx/giode/components/scroll"
+	"github.com/xmhrnx/giode/components/segmented"
 
 	"github.com/mehran9675/touchup/internal/engine"
 	"github.com/mehran9675/touchup/internal/tr"
