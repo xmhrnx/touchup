@@ -1,5 +1,8 @@
 # giode.toml configures how the giode CLI builds this app.
 # Reference: https://github.com/xmhrnx/giode-cli#giodetoml
+#
+# The release workflow sets the version from the release tag; the values
+# here are for local builds. See RELEASING.md.
 
 [app]
 name = "TouchUp"
@@ -10,6 +13,8 @@ icon = "assets/icon.png"
 splash_color = "#09090D"     # launch background, the dark theme's
 splash_color_light = "#F6F6F9"  # the light theme's
 package = "."
+# Desktop only: TouchUp drives command-line engines and FFmpeg, which
+# Android and iOS can't run.
 platforms = ["linux", "windows", "macos"]   # what giode build builds with no target named
 publisher = "xmhrnx"
 description = "Upscale images, video and audio with AI engines that run on your computer."
@@ -17,9 +22,26 @@ website = "https://xmhrnx.github.io/touchup/"
 
 [macos]
 min_os = 11
-# identity = "Developer ID Application: Your Name (TEAMID)"  # signs giode build -release
-# notary_id = "you@example.com"     # notarizes, with the password in $GIODE_NOTARY_PASS
-# notary_team_id = "TEAMID"
+# Developer ID signing and notarization of the .dmg on GitHub come from the
+# MACOS_CERT_* and GIODE_NOTARY_* repository secrets; see RELEASING.md.
+#
+# No Mac App Store build ([macos.store]): TouchUp's work is running
+# programs it downloads (ncnn engines, its own Python and the packages pip
+# installs) and the user's FFmpeg, which every job, images included, goes
+# through. The App Sandbox can't run the user's FFmpeg, and the App Store
+# allows no downloaded code (guideline 2.5.2), so a sandboxed TouchUp could
+# do nothing. The notarized .dmg is the macOS release.
+
+[macos.plist]
+LSApplicationCategoryType = "public.app-category.video"
+# TouchUp only uses the system's HTTPS (engine and model downloads), which
+# is exempt from export rules.
+ITSAppUsesNonExemptEncryption = false
+
+# The privacy manifest Apple's stores want; unused while TouchUp has no
+# App Store build. TouchUp collects nothing: media never leaves the computer.
+[privacy]
+tracking = false
 
 [windows]
 arch = "amd64"
@@ -33,6 +55,15 @@ arch = "amd64"
 [windows.signing]
 # certificate = "codesign.pfx"   # created by giode cert (testing) or bought; password in $GIODE_WINDOWS_CERT_PASS
 # timestamp = "http://timestamp.digicert.com"
+
+# The Microsoft Store package (giode build msix). The Store signs it.
+# identity_name must match Partner Center → TouchUp → Product identity
+# (Package/Identity/Name) once the name is reserved; see RELEASING.md.
+# No firewall rules (TouchUp listens on no port) and no startup task.
+[windows.msix]
+publisher = "CN=B40E8F57-A7E0-40BB-8E74-5D051D0B578B"
+publisher_display_name = "Mehran Zahiroddini"
+identity_name = "MehranZahir.TouchUp"
 
 [linux]
 categories = ["AudioVideo", "Graphics"]     # freedesktop menu categories
@@ -53,3 +84,13 @@ mime_types = ["video/mp4", "video/quicktime", "video/x-matroska", "video/webm", 
 name = "Audio"
 extensions = ["wav", "flac", "mp3", "m4a", "ogg", "opus", "aiff"]
 mime_types = ["audio/wav", "audio/flac", "audio/mpeg", "audio/mp4", "audio/ogg", "audio/opus", "audio/aiff"]
+
+# GitHub Actions: giode ci writes .github/workflows/release.yml from this.
+# Builds when a GitHub release is published and attaches the packages to it.
+# After `giode ci -f`, redo two edits by hand: pin the CLI
+# (`go install github.com/xmhrnx/giode-cli/cmd/giode@v0.1.35-alpha.1`
+# instead of @latest) and use `go-version-file: go.mod` instead of
+# `go-version: stable`.
+[ci]
+trigger = "release"
+test = "go vet ./... && go test ./..."

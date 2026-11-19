@@ -1,0 +1,143 @@
+# Written by giode ci from giode.toml; rerun giode ci -f after changing
+# [ci] there rather than editing this file.
+# Builds when a GitHub release is published and adds the files to it.
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  # A four-part tag (v1.4.2.7) also sets the build number.
+  GIODE_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+  GIODE_BUILD: ${{ github.run_number }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc pkg-config libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev
+      - name: Test (giode.toml ci.test)
+        run: |
+          go vet ./... && go test ./...
+
+  linux:
+    needs: test
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            primary: true
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc pkg-config libwayland-dev libx11-dev libx11-xcb-dev libxkbcommon-x11-dev libgles2-mesa-dev libegl1-mesa-dev libffi-dev libxcursor-dev libvulkan-dev nsis osslsigncode
+          go install github.com/xmhrnx/giode-cli/cmd/giode@v0.1.35-alpha.1
+      - name: Signing keys
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore; fi
+          if [ -n "$WINDOWS_CERT_BASE64" ]; then echo "$WINDOWS_CERT_BASE64" | base64 -d > codesign.pfx; fi
+      - name: Build Linux packages
+        run: giode build deb rpm
+      - name: Build Windows
+        if: matrix.primary
+        env:
+          GIODE_KEYSTORE_PASS: ${{ secrets.GIODE_KEYSTORE_PASS }}
+          GIODE_WINDOWS_CERT_PASS: ${{ secrets.GIODE_WINDOWS_CERT_PASS }}
+        run: |
+          # Signed when the repository has the certificate or keystore.
+          win=""; if [ -n "$GIODE_WINDOWS_CERT_PASS" ]; then win="-release"; fi
+          giode build $win -arch amd64 windows-installer msix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          if-no-files-found: ignore
+          path: |
+            dist/linux/*.deb
+            dist/linux/*.rpm
+            dist/windows/*.exe
+            dist/windows/*.msix
+            dist/android/*.apk
+            dist/android/*.aab
+            dist/android/native-debug-symbols.zip
+
+  macos:
+    needs: test
+    runs-on: macos-latest
+    # A hung signing step fails in an hour rather than GitHub's six.
+    timeout-minutes: 60
+    env:
+      MACOS_CERT_BASE64: ${{ secrets.MACOS_CERT_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go install github.com/xmhrnx/giode-cli/cmd/giode@v0.1.35-alpha.1
+      - name: Signing certificate
+        if: env.MACOS_CERT_BASE64 != ''
+        env:
+          MACOS_CERT_PASS: ${{ secrets.MACOS_CERT_PASS }}
+        run: |
+          echo "$MACOS_CERT_BASE64" | base64 -d > cert.p12
+          security create-keychain -p ci build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p ci build.keychain
+          security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASS" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci build.keychain
+          rm cert.p12
+      - name: Build
+        env:
+          # Signed with the certificate's Developer ID identity, and
+          # notarized with these (macos.notary_id, macos.notary_team_id
+          # when not set here).
+          GIODE_NOTARY_ID: ${{ secrets.GIODE_NOTARY_ID }}
+          GIODE_NOTARY_TEAM_ID: ${{ secrets.GIODE_NOTARY_TEAM_ID }}
+          GIODE_NOTARY_PASS: ${{ secrets.GIODE_NOTARY_PASS }}
+        run: |
+          release=""
+          if [ -n "$MACOS_CERT_BASE64" ]; then release="-release"; fi
+          giode build $release dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          if-no-files-found: ignore
+          path: |
+            dist/macos/*.dmg
+            dist/macos/appstore/*.pkg
+
+  publish:
+    needs: [linux, macos]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          tag_name: ${{ github.ref_name }}
